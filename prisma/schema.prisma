@@ -27,5 +27,35 @@ model User {
   age          Int?
   gender       String?
 
+  role_id Int @default(1)
+  role    Role @relation(fields: [role_id], references: [id])
+
+  recovery_tokens RecoveryToken[]
   @@map("users")
+}
+
+model Role {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name String @unique
+
+  users User[]
+  @@map("roles")
+}
+
+model RecoveryToken {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  token String @unique
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id])
+
+  @@map("recovery_tokens")
 }

@@ -53,7 +53,11 @@ export class AuthService {
         }
       }
 
-      throw error;
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Something went wrong, please try again',
+        metadata: {},
+      };
     }
   }
 
@@ -69,7 +73,7 @@ export class AuthService {
 
       const match = await bcrypt.compare(dto.password, user.password);
 
-      if (!match) throw new ForbiddenException('User not found');
+      if (!match) throw new ForbiddenException('Password is wrong');
 
       return {
         statusCode: HttpStatus.OK,
@@ -83,8 +87,22 @@ export class AuthService {
           ),
         },
       };
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        return {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: error.message,
+          metadata: {},
+        };
+      }
+
+      if (error instanceof ForbiddenException) {
+        return {
+          statusCode: HttpStatus.FORBIDDEN,
+          message: error.message,
+          metadata: {},
+        };
+      }
     }
   }
 
