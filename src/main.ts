@@ -12,8 +12,7 @@ async function bootstrap() {
       'https://qvk-hhdh-ptudw-nc-2023-20ktpm02.vercel.app/',
     ],
     methods: 'GET,PATCH,DELETE,POST,PUT',
-    allowedHeaders:
-      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
+    allowedHeaders: '*',
     preflightContinue: false,
     credentials: true,
   });
