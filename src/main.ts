@@ -11,8 +11,12 @@ async function bootstrap() {
       'https://qvk-hhdh-ptudw-nc-2023-20ktpm02.vercel.app/',
     ],
     methods: 'GET,PATCH,DELETE,POST,PUT',
-    allowedHeaders:
-      'Content-Type, Accept, Authorization, Access-Control-Allow-Origin',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Allow-Access-Control-Origin',
+    ],
     preflightContinue: false,
     credentials: true,
   });
