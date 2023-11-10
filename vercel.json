@@ -12,7 +12,7 @@
       "dest": "src/main.ts",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
       "headers": {
-        "Access-Control-Allow-Origin": "*"
+        "Access-Control-Allow-Origin": ["http://localhost:3000", "https://qvk-hhdh-ptudw-nc-2023-20ktpm02.vercel.app"]
       }
     }
   ]
