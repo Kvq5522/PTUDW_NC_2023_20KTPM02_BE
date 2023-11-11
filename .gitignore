@@ -35,3 +35,7 @@ lerna-debug.log*
 !.vscode/extensions.
 
 .env
+.vercel
+
+Dockerfile
+fly.toml

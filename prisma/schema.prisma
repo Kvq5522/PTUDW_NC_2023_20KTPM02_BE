@@ -51,6 +51,7 @@ model RecoveryToken {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  expires_at DateTime
 
   token String @unique
 

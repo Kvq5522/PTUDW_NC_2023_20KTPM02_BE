@@ -19,6 +19,9 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(1507);
+  const port = process.env.PORT || 1507;
+  const host = '0.0.0.0';
+
+  await app.listen(port, host);
 }
 bootstrap();
