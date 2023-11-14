@@ -16,10 +16,14 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
 
-  const port = process.env.PORT || 1507;
+  const port = process.env.PORT;
   const host = '0.0.0.0';
 
   await app.listen(port, host);

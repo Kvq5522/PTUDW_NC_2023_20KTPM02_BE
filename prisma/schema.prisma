@@ -26,11 +26,10 @@ model User {
   address      String? @db.VarChar(255)
   age          Int?
   gender       String?
-
-  role_id Int @default(1)
-  role    Role @relation(fields: [role_id], references: [id])
+  avatar       String? @default("https://firebasestorage.googleapis.com/v0/b/ptudwnc2-20ktpm02-2023.appspot.com/o/images%2Favatar%2Fuser-default-avatar.png?alt=media&token=87041583-59b4-43a6-86eb-a93f06cd8b3e")
 
   recovery_tokens RecoveryToken[]
+
   @@map("users")
 }
 
@@ -42,7 +41,6 @@ model Role {
 
   name String @unique
 
-  users User[]
   @@map("roles")
 }
 

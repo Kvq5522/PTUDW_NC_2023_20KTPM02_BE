@@ -1,15 +1,63 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { UserService } from './user.service';
-import { Request } from 'express';
+import {
+  Body,
+  Controller,
+  FileTypeValidator,
+  Get,
+  HttpCode,
+  HttpStatus,
+  MaxFileSizeValidator,
+  Patch,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  ValidationPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
+import { UserService } from './user.service';
+
+import { JwtGuard } from 'src/auth/guard';
+import { GetUser } from 'src/auth/decorator';
+
+import { User } from '@prisma/client';
+import { UserDto } from './dto';
+import { CustomFilePipe } from './pipe';
+
+@UseGuards(JwtGuard)
 @Controller('user')
 export class UserController {
   constructor(private userService: UserService) {}
 
-  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(200)
   @Get('/get-info')
-  getUser(@Req() req: Request) {
-    return this.userService.getInfo(req.user['email']);
+  getUser(@GetUser() user: User) {
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Get user info successfully',
+      metadata: user,
+    };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Patch('/update-info')
+  @UseInterceptors(FileInterceptor('avatar', {}))
+  updateUser(
+    @GetUser() user: User,
+    @Body(new ValidationPipe({ groups: ['update-info'] })) dto: UserDto,
+    @UploadedFile(
+      new CustomFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: 'image' }),
+        ],
+      }),
+    )
+    avatar: Express.Multer.File,
+  ) {
+    try {
+      return this.userService.updateUser(user.id, dto, avatar);
+    } catch (error) {
+      return error.response;
+    }
   }
 }

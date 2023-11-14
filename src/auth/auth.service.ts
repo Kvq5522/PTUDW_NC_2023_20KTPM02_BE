@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpStatus,
   Injectable,
@@ -10,9 +11,11 @@ import { AuthDto } from './dto';
 
 import * as bcrypt from 'bcrypt';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
 import { JwtService } from '@nestjs/jwt';
+
 import { MailingService } from 'src/mailing/mailing.service';
-import { MailDto } from './dto/mail.dto';
+import { MailDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -31,15 +34,9 @@ export class AuthService {
           ...dto,
           password: hash,
         },
-        select: {
-          id: true,
-          email: true,
-          first_name: true,
-          last_name: true,
-          created_at: true,
-          updated_at: true,
-        },
       });
+
+      delete user.password;
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -57,11 +54,7 @@ export class AuthService {
         }
       }
 
-      return {
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Something went wrong, please try again',
-        metadata: {},
-      };
+      return new BadRequestException('Something went wrong, please try again');
     }
   }
 
@@ -92,21 +85,7 @@ export class AuthService {
         },
       };
     } catch (error: any) {
-      if (error instanceof NotFoundException) {
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: error.message,
-          metadata: {},
-        };
-      }
-
-      if (error instanceof ForbiddenException) {
-        return {
-          statusCode: HttpStatus.FORBIDDEN,
-          message: error.message,
-          metadata: {},
-        };
-      }
+      return error;
     }
   }
 
@@ -149,27 +128,7 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: error.message,
-          metadata: {},
-        };
-      }
-
-      if (error instanceof InternalServerErrorException) {
-        return {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Something went wrong, please try again',
-          metadata: {},
-        };
-      }
-
-      return {
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: error.message,
-        metadata: {},
-      };
+      return error;
     }
   }
 
@@ -220,21 +179,7 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: error.message,
-          metadata: {},
-        };
-      }
-
-      if (error instanceof ForbiddenException) {
-        return {
-          statusCode: HttpStatus.FORBIDDEN,
-          message: error.message,
-          metadata: {},
-        };
-      }
+      error;
     }
   }
 
