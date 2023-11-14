@@ -57,6 +57,8 @@ export class UserService {
       const updatedData = {};
 
       for (const keys in dto) {
+        if (!dto[keys]) continue;
+
         if (keys == 'confirm_password') continue;
 
         if (keys == 'new_password') {
