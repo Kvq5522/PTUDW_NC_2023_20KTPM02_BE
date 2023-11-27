@@ -9,6 +9,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'https://qvk-hhdh-ptudw-nc-2023-20ktpm02.vercel.app',
+      'https://ptudwnc-20ktpm02-hkp-classroom.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   });
