@@ -26,4 +26,28 @@ export class MailingService {
       throw new Error(error);
     }
   }
+
+  async sendVerificationMail(
+    user: { email: any; first_name: any; last_name: any },
+    token: string,
+  ) {
+    try {
+      if (!user) throw new Error('User not found');
+
+      console.log(process.env.BE_ENDPOINT);
+
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: 'Email Verification',
+        template: 'activateAccount',
+        context: {
+          link: `${process.env.BE_ENDPOINT}/auth/verify-email?token=${token}&email=${user.email}`,
+          user: `${user.first_name} ${user.last_name}`,
+        },
+      });
+    } catch (error) {
+      Logger.error(error);
+      throw new Error(error);
+    }
+  }
 }

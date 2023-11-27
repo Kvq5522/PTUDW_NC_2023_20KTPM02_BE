@@ -38,6 +38,16 @@ export class AuthService {
 
       delete user.password;
 
+      await this.mailService.sendVerificationMail(
+        user,
+        await this.signToken(
+          user.id,
+          user.email,
+          user.first_name,
+          user.last_name,
+        ),
+      );
+
       return {
         statusCode: HttpStatus.CREATED,
         message: 'User created successfully',
@@ -68,6 +78,9 @@ export class AuthService {
 
       if (!user) throw new NotFoundException('User not found');
 
+      if (!user.is_activated)
+        throw new ForbiddenException('User is not activated');
+
       const match = await bcrypt.compare(dto.password, user.password);
 
       if (!match) throw new ForbiddenException('Password is wrong');
@@ -85,6 +98,76 @@ export class AuthService {
         },
       };
     } catch (error: any) {
+      return error;
+    }
+  }
+
+  async findOrCreateOauthUser(req: any) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email: req.user.email,
+        },
+      });
+
+      if (!user) {
+        const createdUser = await this.prisma.user.create({
+          data: {
+            email: req.user.email,
+            first_name: req.user.firstName,
+            last_name: req.user.lastName,
+            avatar: req.user.avatar,
+            is_activated: true,
+            password: '',
+          },
+        });
+
+        return await this.signToken(
+          createdUser.id,
+          createdUser.email,
+          createdUser.first_name,
+          createdUser.last_name,
+        );
+      }
+
+      return await this.signToken(
+        user.id,
+        user.email,
+        user.first_name,
+        user.last_name,
+      );
+    } catch (error) {
+      return error;
+    }
+  }
+
+  async activateAccount(email: string, token: string) {
+    try {
+      const decode = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      if (decode.email !== email)
+        throw new ForbiddenException('Token is invalid');
+
+      const user = await this.prisma.user.update({
+        where: {
+          email: email,
+        },
+        data: {
+          is_activated: true,
+        },
+      });
+
+      if (!user) throw new NotFoundException('User not found');
+
+      return await this.signToken(
+        user.id,
+        user.email,
+        user.first_name,
+        user.last_name,
+      );
+    } catch (error) {
       return error;
     }
   }
@@ -164,6 +247,7 @@ export class AuthService {
         },
         data: {
           password: hash,
+          is_activated: true,
         },
       });
 
@@ -180,6 +264,47 @@ export class AuthService {
       };
     } catch (error) {
       error;
+    }
+  }
+
+  async verifyToken(token: string) {
+    try {
+      const decode = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      if (
+        !decode.userId ||
+        !decode.email ||
+        !decode.first_name ||
+        !decode.last_name
+      )
+        throw new ForbiddenException('Token is invalid');
+
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: decode.userId,
+        },
+      });
+
+      if (!user) throw new ForbiddenException('User not found');
+
+      if (decode.email !== user.email)
+        throw new ForbiddenException('Token is invalid');
+
+      //check expiration
+      const expiration = new Date(decode.exp * 1000);
+
+      if (expiration < new Date(Date.now()))
+        throw new ForbiddenException('Token expired');
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Token is valid',
+        metadata: {},
+      };
+    } catch (error) {
+      return error;
     }
   }
 

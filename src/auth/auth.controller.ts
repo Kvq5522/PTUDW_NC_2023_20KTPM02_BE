@@ -1,14 +1,21 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
 import { MailDto } from './dto/mail.dto';
+import { FacebookGuard, GoogleGuard } from './guard';
 
 @Controller('auth')
 export class AuthController {
@@ -38,6 +45,37 @@ export class AuthController {
     }
   }
 
+  @Get('google')
+  @UseGuards(GoogleGuard)
+  async googleAuth() {}
+
+  @HttpCode(HttpStatus.OK)
+  @Get('google/callback')
+  @UseGuards(GoogleGuard)
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    try {
+      const token = await this.authService.findOrCreateOauthUser(req);
+      return res.redirect(`${process.env.FE_ENDPOINT}/sign-in?token=${token}`);
+    } catch (error) {
+      return res.redirect(`${process.env.FE_ENDPOINT}/sign-in`);
+    }
+  }
+
+  @Get('facebook')
+  @UseGuards(FacebookGuard)
+  async facebookAuth() {}
+
+  @Get('facebook/callback')
+  @UseGuards(FacebookGuard)
+  async facebookAuthRedirect(@Req() req, @Res() res) {
+    try {
+      const token = await this.authService.findOrCreateOauthUser(req);
+      return res.redirect(`${process.env.FE_ENDPOINT}/sign-in?token=${token}`);
+    } catch (error) {
+      return res.redirect(`${process.env.FE_ENDPOINT}/sign-in`);
+    }
+  }
+
   @HttpCode(HttpStatus.OK)
   @Post('/send-recovery-mail')
   async sendRecoveryMail(@Body(new ValidationPipe()) dto: MailDto) {
@@ -51,6 +89,33 @@ export class AuthController {
   ) {
     try {
       return await this.authService.recoverPassword(dto);
+    } catch (error) {
+      return error.response;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('/verify-email')
+  async activateAccount(@Query() queries, @Res() res) {
+    try {
+      const token = await this.authService.activateAccount(
+        queries.email,
+        queries.token,
+      );
+
+      return res.redirect(`${process.env.FE_ENDPOINT}/sign-in?token=${token}`);
+    } catch (error) {
+      return error.response;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/verify-token')
+  async verifyToken(@Body() body) {
+    try {
+      if (!body.token) throw new ForbiddenException('Token is required');
+
+      return await this.authService.verifyToken(body.token);
     } catch (error) {
       return error.response;
     }

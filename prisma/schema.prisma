@@ -22,13 +22,17 @@ model User {
   first_name String @db.VarChar(255)
   last_name  String @db.VarChar(255)
 
+  is_activated Boolean @default(false)
+
   phone_number String?
   address      String? @db.VarChar(255)
   age          Int?
   gender       String?
   avatar       String? @default("https://firebasestorage.googleapis.com/v0/b/ptudwnc2-20ktpm02-2023.appspot.com/o/images%2Favatar%2Fuser-default-avatar.png?alt=media&token=87041583-59b4-43a6-86eb-a93f06cd8b3e")
 
-  recovery_tokens RecoveryToken[]
+  recovery_tokens       RecoveryToken[]
+  classroom_members     ClassroomMember[]
+  announcement_comments AnnouncementComment[]
 
   @@map("users")
 }
@@ -40,6 +44,8 @@ model Role {
   updated_at DateTime @updatedAt
 
   name String @unique
+
+  classroom_members ClassroomMember[]
 
   @@map("roles")
 }
@@ -57,4 +63,70 @@ model RecoveryToken {
   user    User @relation(fields: [user_id], references: [id])
 
   @@map("recovery_tokens")
+}
+
+model Classroom {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name String @unique
+
+  invite_code String @unique
+
+  classroom_members ClassroomMember[]
+  announcements     ClassroomAnnouncement[]
+
+  @@map("classrooms")
+}
+
+model ClassroomMember {
+  id Int @id @default(autoincrement())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  member_role    Int
+  member_role_fk Role @relation(fields: [member_role], references: [id])
+
+  member_id    Int
+  member_id_fk User @relation(fields: [member_id], references: [id])
+
+  classroom_id    Int
+  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id])
+
+  @@map("classroom_members")
+}
+
+model ClassroomAnnouncement {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  description String
+  resource    String
+
+  class_id    Int
+  class_id_fk Classroom @relation(fields: [class_id], references: [id])
+
+  comments AnnouncementComment[]
+
+  @@map("classroom_announcements")
+}
+
+model AnnouncementComment {
+  id Int @id @default(autoincrement())
+
+  userId     Int
+  user_id_fk User @relation(fields: [userId], references: [id])
+
+  description String
+
+  slug String @unique @default("")
+
+  announcementId     Int
+  announcement_id_fk ClassroomAnnouncement @relation(fields: [announcementId], references: [id])
+
+  @@map("announcement_comments")
 }
