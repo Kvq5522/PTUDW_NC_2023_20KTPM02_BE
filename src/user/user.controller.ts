@@ -31,6 +31,8 @@ export class UserController {
   @HttpCode(200)
   @Get('/get-info')
   getUser(@GetUser() user: User) {
+    delete user.password;
+
     return {
       statusCode: HttpStatus.OK,
       message: 'Get user info successfully',
@@ -41,7 +43,7 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @Patch('/update-info')
   @UseInterceptors(FileInterceptor('avatar', {}))
-  updateUser(
+  async updateUser(
     @GetUser() user: User,
     @Body(new ValidationPipe({ groups: ['update-info'] })) dto: UserDto,
     @UploadedFile(
@@ -55,7 +57,7 @@ export class UserController {
     avatar: Express.Multer.File,
   ) {
     try {
-      return this.userService.updateUser(user.id, dto, avatar);
+      return await this.userService.updateUser(user.id, dto, avatar);
     } catch (error) {
       return error.response;
     }

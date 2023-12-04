@@ -30,7 +30,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       email: emails[0].value,
       firstName: name.givenName,
       lastName: name.familyName,
-      picture: photos[0].value,
+      avatar: photos[0].value,
       token: accessToken,
     };
     done(null, user);

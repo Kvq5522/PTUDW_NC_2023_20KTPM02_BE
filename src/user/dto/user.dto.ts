@@ -1,14 +1,6 @@
-import { IsNotEmpty, IsNumber, IsString, ValidateIf } from 'class-validator';
+import { IsNumber, IsString, ValidateIf } from 'class-validator';
 
 export class UserDto {
-  @IsNotEmpty()
-  @IsString()
-  confirm_password: string;
-
-  @ValidateIf((o) => o.new_password !== undefined)
-  @IsString()
-  new_password: string;
-
   @ValidateIf((o) => o.first_name !== undefined)
   @IsString()
   first_name: string;

@@ -33,6 +33,7 @@ model User {
   recovery_tokens       RecoveryToken[]
   classroom_members     ClassroomMember[]
   announcement_comments AnnouncementComment[]
+  owned_classrooms      Classroom[]
 
   @@map("users")
 }
@@ -71,14 +72,33 @@ model Classroom {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  name String @unique
+  name String
 
-  invite_code String @unique
+  owner_id Int
+  owner_fk    User @relation(fields: [owner_id], references: [id])
 
   classroom_members ClassroomMember[]
   announcements     ClassroomAnnouncement[]
+  invitations       ClassroomInvitation[]
 
   @@map("classrooms")
+}
+
+model ClassroomInvitation {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  student_invite_code String @unique
+  teacher_invite_code String @unique
+  student_invite_uri_code String @unique
+  teacher_invite_uri_code String @unique
+
+  classroom_id Int
+  classroom_fk    Classroom @relation(fields: [classroom_id], references: [id])
+
+  @@map("classroom_invitations")
 }
 
 model ClassroomMember {
@@ -90,11 +110,12 @@ model ClassroomMember {
   member_role_fk Role @relation(fields: [member_role], references: [id])
 
   member_id    Int
-  member_id_fk User @relation(fields: [member_id], references: [id])
+  member_id_fk User @relation(fields: [member_id], references: [id], onDelete: Cascade)
 
   classroom_id    Int
-  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id])
+  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
 
+  @@unique([member_id, classroom_id])
   @@map("classroom_members")
 }
 
@@ -108,7 +129,7 @@ model ClassroomAnnouncement {
   resource    String
 
   class_id    Int
-  class_id_fk Classroom @relation(fields: [class_id], references: [id])
+  class_id_fk Classroom @relation(fields: [class_id], references: [id], onDelete: Cascade)
 
   comments AnnouncementComment[]
 
@@ -126,7 +147,7 @@ model AnnouncementComment {
   slug String @unique @default("")
 
   announcementId     Int
-  announcement_id_fk ClassroomAnnouncement @relation(fields: [announcementId], references: [id])
+  announcement_id_fk ClassroomAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
   @@map("announcement_comments")
 }

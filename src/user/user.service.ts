@@ -3,8 +3,6 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserDto } from './dto';
 
-import * as bcrypt from 'bcrypt';
-
 @Injectable()
 export class UserService {
   constructor(
@@ -26,8 +24,8 @@ export class UserService {
         },
       });
 
-      if (!(await bcrypt.compare(dto.confirm_password, checkUser.password))) {
-        throw new BadRequestException("Password doesn't match");
+      if (!checkUser) {
+        throw new BadRequestException('User not found');
       }
 
       if (dto.first_name === '' || dto.last_name === '') {
@@ -45,7 +43,10 @@ export class UserService {
           checkUser.avatar.split('/o/')[1],
         ).split('?')[0];
 
-        if (oldImagePath !== 'images/avatar/user-default-avatar.png') {
+        if (
+          oldImagePath !== 'images/avatar/user-default-avatar.png' ||
+          !oldImagePath.includes('firebasestorage.googleapis.com')
+        ) {
           await this.firebaseService.deleteFile(checkUser.avatar);
         }
 
@@ -58,13 +59,6 @@ export class UserService {
 
       for (const keys in dto) {
         if (!dto[keys]) continue;
-
-        if (keys == 'confirm_password') continue;
-
-        if (keys == 'new_password') {
-          updatedData['password'] = await bcrypt.hash(dto[keys], 10);
-          continue;
-        }
 
         updatedData[keys] = dto[keys];
       }

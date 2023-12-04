@@ -263,7 +263,7 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
-      error;
+      return error;
     }
   }
 

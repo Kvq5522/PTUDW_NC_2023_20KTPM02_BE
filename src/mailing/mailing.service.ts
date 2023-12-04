@@ -34,8 +34,6 @@ export class MailingService {
     try {
       if (!user) throw new Error('User not found');
 
-      console.log(process.env.BE_ENDPOINT);
-
       await this.mailService.sendMail({
         to: user.email,
         subject: 'Email Verification',
