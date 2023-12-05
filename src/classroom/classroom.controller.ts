@@ -52,6 +52,24 @@ export class ClassroomController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Get('/user-info/:classroom_id')
+  async getUserInfoInClass(@Req() req: Request, @Param() params) {
+    try {
+      const user = req.user as User;
+
+      if (!params.classroom_id)
+        throw new BadRequestException('Missing classroom id');
+
+      return await this.classroomService.getUserInfoInClass(
+        parseInt(params.classroom_id),
+        user.id,
+      );
+    } catch (error) {
+      return error.response;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
   @Delete('/leave/:classroom_id')
   async leaveClassroom(@Req() req, @Param() params) {
     try {
@@ -71,10 +89,12 @@ export class ClassroomController {
 
   @HttpCode(HttpStatus.OK)
   @Get('/member-info/:classroom_id')
-  async getClassroomMember(@Param() params) {
+  async getClassroomMember(@Param() params, @Req() req) {
     try {
+      const user = req.user as User;
       return await this.classroomService.getClassroomMember(
         parseInt(params.classroom_id),
+        user.id,
       );
     } catch (error) {
       return error.response;

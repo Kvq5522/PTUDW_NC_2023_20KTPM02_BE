@@ -123,6 +123,54 @@ export class ClassroomService {
     }
   }
 
+  async getUserInfoInClass(classroom_id: number, user_id: number) {
+    try {
+      const classroomMember =
+        await this.prismaService.classroomMember.findFirst({
+          where: {
+            AND: [
+              {
+                classroom_id: classroom_id,
+              },
+              {
+                member_id: user_id,
+              },
+            ],
+          },
+          select: {
+            member_id: true,
+            member_role: true,
+            member_id_fk: {
+              select: {
+                first_name: true,
+                last_name: true,
+                email: true,
+              },
+            },
+            member_role_fk: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+
+      if (!classroomMember)
+        throw new BadRequestException("You're not in this classroom");
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Get user info in classroom successfully',
+        metadata: classroomMember,
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
+      return error;
+    }
+  }
+
   async getClassroomList(user_id: number) {
     try {
       const classroomList = await this.prismaService.classroomMember.findMany({
@@ -161,8 +209,25 @@ export class ClassroomService {
     }
   }
 
-  async getClassroomMember(classroom_id: number) {
+  async getClassroomMember(classroom_id: number, user_id: number) {
     try {
+      const checkIfUserInClassroom =
+        await this.prismaService.classroomMember.findFirst({
+          where: {
+            AND: [
+              {
+                classroom_id: classroom_id,
+              },
+              {
+                member_id: user_id,
+              },
+            ],
+          },
+        });
+
+      if (!checkIfUserInClassroom)
+        throw new BadRequestException("You're not in this classroom");
+
       const classroomMembers =
         await this.prismaService.classroomMember.findMany({
           where: {
@@ -190,7 +255,8 @@ export class ClassroomService {
           },
         });
 
-      if (!classroomMembers) throw new Error('Cannot get classroom members');
+      if (!classroomMembers)
+        throw new BadRequestException('Cannot get classroom members');
 
       return {
         statusCode: HttpStatus.OK,
@@ -207,17 +273,7 @@ export class ClassroomService {
 
   async getClassroomInvitationInfo(user_id: number, classroom_id: number) {
     try {
-      const classroomInvitation =
-        await this.prismaService.classroomInvitation.findFirst({
-          where: {
-            classroom_id: classroom_id,
-          },
-        });
-
-      if (!classroomInvitation)
-        throw new BadRequestException('Classroom does not exist');
-
-      const classroomMember =
+      const checkIfUserInClassroom =
         await this.prismaService.classroomMember.findFirst({
           where: {
             AND: [
@@ -231,10 +287,20 @@ export class ClassroomService {
           },
         });
 
-      if (!classroomMember)
+      if (!checkIfUserInClassroom)
         throw new BadRequestException("You're not in this classroom");
 
-      if (classroomMember.member_role < 2) {
+      const classroomInvitation =
+        await this.prismaService.classroomInvitation.findFirst({
+          where: {
+            classroom_id: classroom_id,
+          },
+        });
+
+      if (!classroomInvitation)
+        throw new BadRequestException('Classroom does not exist');
+
+      if (checkIfUserInClassroom.member_role < 2) {
         delete classroomInvitation.teacher_invite_code;
         delete classroomInvitation.teacher_invite_uri_code;
       }
@@ -303,7 +369,15 @@ export class ClassroomService {
       if (!newClassroomMember)
         throw new InternalServerErrorException('Cannot join classroom');
 
-      return newClassroomMember;
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: `Join classroom as ${
+          classroomInvitation.student_invite_code === invite_code
+            ? 'student'
+            : 'teacher'
+        } successfully`,
+        metadata: newClassroomMember,
+      };
     } catch (error) {
       if (!(error instanceof HttpException)) {
         return new InternalServerErrorException(error);
@@ -365,7 +439,11 @@ export class ClassroomService {
 
       return {
         statusCode: HttpStatus.CREATED,
-        message: 'Join classroom successfully',
+        message: `Join classroom as ${
+          classroomInvitation.student_invite_uri_code === invite_uri
+            ? 'student'
+            : 'teacher'
+        } successfully`,
         metadata: newClassroomMember,
       };
     } catch (error) {
