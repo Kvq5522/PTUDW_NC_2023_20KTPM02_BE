@@ -94,6 +94,23 @@ export class ClassroomService {
           member_id: dto.userId,
           member_role: roles.OWNER,
         },
+        select: {
+          classroom_id: true,
+          classroom_id_fk: {
+            select: {
+              name: true,
+              owner_id: true,
+              owner_fk: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!classroomOwner) {
@@ -110,9 +127,7 @@ export class ClassroomService {
         statusCode: HttpStatus.CREATED,
         message: 'Create classroom successfully',
         metadata: {
-          classroom,
-          classroomOwner,
-          classroomInvitation,
+          classroom: classroomOwner,
         },
       };
     } catch (error) {
@@ -363,6 +378,23 @@ export class ClassroomService {
               classroomInvitation.student_invite_code === invite_code
                 ? roles.STUDENT
                 : roles.TEACHER,
+          },
+          select: {
+            classroom_id: true,
+            classroom_id_fk: {
+              select: {
+                name: true,
+                owner_id: true,
+                owner_fk: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                    email: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
           },
         });
 

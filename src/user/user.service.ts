@@ -1,4 +1,10 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserDto } from './dto';
@@ -67,19 +73,25 @@ export class UserService {
         updatedData['avatar'] = downloadURL;
       }
 
-      await this.prismaService.user.update({
+      const udpatedUser = await this.prismaService.user.update({
         where: {
           id: userId,
         },
         data: updatedData,
       });
 
+      delete udpatedUser.password;
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Update user successfully',
+        metadata: udpatedUser,
       };
     } catch (error) {
-      return error.response;
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
+      return error;
     }
   }
 }

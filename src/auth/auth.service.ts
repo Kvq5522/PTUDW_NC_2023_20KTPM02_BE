@@ -1,6 +1,6 @@
 import {
-  BadRequestException,
   ForbiddenException,
+  HttpException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -64,7 +64,11 @@ export class AuthService {
         }
       }
 
-      return new BadRequestException('Something went wrong, please try again');
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
+
+      return error;
     }
   }
 
@@ -98,6 +102,9 @@ export class AuthService {
         },
       };
     } catch (error: any) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
       return error;
     }
   }
@@ -137,6 +144,9 @@ export class AuthService {
         user.last_name,
       );
     } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
       return error;
     }
   }
@@ -168,6 +178,9 @@ export class AuthService {
         user.last_name,
       );
     } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
       return error;
     }
   }
@@ -211,6 +224,9 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
       return error;
     }
   }
@@ -304,6 +320,9 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
       return error;
     }
   }
