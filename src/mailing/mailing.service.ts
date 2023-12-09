@@ -48,4 +48,30 @@ export class MailingService {
       throw new Error(error);
     }
   }
+
+  async sendInviteMail(
+    user: { email: any; first_name: any; last_name: any },
+    classname: string,
+    owner: { first_name: any; last_name: any },
+    uri: string,
+  ) {
+    try {
+      if (!user) throw new Error('User not found');
+
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: 'Invitation to join the classroom',
+        template: 'inviteToClass',
+        context: {
+          link: `${process.env.FE_ENDPOINT}/classroom/invite?uri=${uri}&email=${user.email}`,
+          user: `${user.first_name} ${user.last_name}`,
+          classname: classname,
+          owner: `${owner.first_name} ${owner.last_name}`,
+        },
+      });
+    } catch (error) {
+      Logger.error(error);
+      throw new Error(error);
+    }
+  }
 }

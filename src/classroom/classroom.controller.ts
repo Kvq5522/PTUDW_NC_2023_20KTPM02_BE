@@ -52,6 +52,24 @@ export class ClassroomController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Get('/info/:classroom_id')
+  async getClasroomInfo(@Req() req: Request, @Param() params) {
+    try {
+      const user = req.user as User;
+
+      if (!params.classroom_id)
+        throw new BadRequestException('Missing classroom id');
+
+      return await this.classroomService.getClassroomInfo(
+        parseInt(params.classroom_id),
+        user.id,
+      );
+    } catch (error) {
+      return error.response;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
   @Get('/user-info/:classroom_id')
   async getUserInfoInClass(@Req() req: Request, @Param() params) {
     try {
@@ -139,6 +157,9 @@ export class ClassroomController {
     try {
       const user = req.user as User;
 
+      if (user.email != body.email)
+        throw new BadRequestException("Email doesn't match");
+
       if (!body.invite_uri) throw new BadRequestException('Missing invite uri');
 
       return await this.classroomService.joinClassroomByInviteUri(
@@ -154,7 +175,7 @@ export class ClassroomController {
   @Post('/add-member')
   async addMember(
     @Req() req,
-    @Body(new ValidationPipe()) addMemberDTO: AddMemberDto,
+    @Body(new ValidationPipe({ transform: true })) addMemberDTO: AddMemberDto,
   ) {
     try {
       const user = req.user as User;
@@ -164,6 +185,9 @@ export class ClassroomController {
 
       if (!addMemberDTO.members)
         throw new BadRequestException('Missing members');
+
+      if (!addMemberDTO.role_id)
+        throw new BadRequestException('Missing role id');
 
       return await this.classroomService.addMember(addMemberDTO, user.id);
     } catch (error) {

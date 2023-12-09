@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddMemberDto, CreateDTO, DeleteMemberDTO } from './dto';
+import { MailingService } from 'src/mailing/mailing.service';
 
 enum roles {
   STUDENT = 1,
@@ -18,7 +19,10 @@ enum roles {
 
 @Injectable()
 export class ClassroomService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private mailingService: MailingService,
+  ) {}
 
   async createClassroom(dto: CreateDTO) {
     try {
@@ -134,6 +138,89 @@ export class ClassroomService {
       if (!(error instanceof HttpException)) {
         return new InternalServerErrorException(error);
       }
+      return error;
+    }
+  }
+
+  async getClassroomInfo(classroom_id: number, user_id: number) {
+    try {
+      const checkIfUserInClassroom =
+        await this.prismaService.classroomMember.findFirst({
+          where: {
+            AND: [
+              {
+                classroom_id: classroom_id,
+              },
+              {
+                member_id: user_id,
+              },
+            ],
+          },
+          select: {
+            member_id: true,
+            member_role: true,
+            member_id_fk: {
+              select: {
+                first_name: true,
+                last_name: true,
+                email: true,
+                avatar: true,
+              },
+            },
+            classroom_id: true,
+          },
+        });
+
+      if (!checkIfUserInClassroom)
+        throw new ForbiddenException("You're not in this classroom");
+
+      const classroomMember = await this.prismaService.classroomMember.findMany(
+        {
+          where: {
+            classroom_id: classroom_id,
+          },
+          select: {
+            member_id: true,
+            member_role: true,
+            member_id_fk: {
+              select: {
+                first_name: true,
+                last_name: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      );
+
+      const classroomInvitation =
+        await this.prismaService.classroomInvitation.findFirst({
+          where: {
+            classroom_id: classroom_id,
+          },
+          select: {
+            student_invite_code: true,
+            teacher_invite_code: true,
+            student_invite_uri_code: true,
+            teacher_invite_uri_code: true,
+          },
+        });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Get classroom info successfully',
+        metadata: {
+          user: checkIfUserInClassroom,
+          invitations: classroomInvitation,
+          members: classroomMember,
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        return new InternalServerErrorException(error);
+      }
+
       return error;
     }
   }
@@ -554,10 +641,11 @@ export class ClassroomService {
   async addMember(addMemberDTO: AddMemberDto, user_id: number) {
     try {
       // Check if user is existed
-      const emails = addMemberDTO.members.map((member) => member.member_email);
+      const emails = addMemberDTO.members;
+      console.log(emails);
       const isExsistedUser = await this.prismaService.user.findMany({
         where: { email: { in: emails } },
-        select: { id: true, email: true },
+        select: { id: true, email: true, first_name: true, last_name: true },
       });
 
       // Map legal, illegal member to array
@@ -565,19 +653,21 @@ export class ClassroomService {
       const illegalMember = addMemberDTO.members
         .map((member) => {
           const existedUser = isExsistedUser.find(
-            (user) => user.email === member.member_email,
+            (user) => user.email === member,
           );
+
           if (existedUser) {
             legalMember.push({
               member_id: existedUser.id,
-              member_email: member.member_email,
-              member_role: member.role_id,
+              member_email: member,
+              member_first_name: existedUser.first_name,
+              member_last_name: existedUser.last_name,
+              member_role: addMemberDTO.role_id,
             });
             return null;
           } else {
             return {
-              member_email: member.member_email,
-              member_role: member.role_id,
+              member_email: member,
               error: 'User does not exist',
             };
           }
@@ -601,35 +691,66 @@ export class ClassroomService {
       if (!personWhoAddMember)
         throw new BadRequestException("You're not in this classroom");
 
+      //re check if user is in this classroom
       for (let i = 0; i < legalMember.length; i++) {
         const curMember = legalMember[i];
         const existedMember = checkExistedClassMember.find(
           (member) => member.member_id === curMember.member_id,
         );
-        const notPermitted =
-          personWhoAddMember.member_role < 2 && curMember.member_role >= 2;
 
-        //Check permission and existed member
-        if (existedMember || notPermitted) {
+        if (existedMember) {
           illegalMember.push({
             member_email: isExsistedUser.find(
-              (user) => user.id === curMember.member_id,
+              (user) => user.id === existedMember.member_id,
             ).email,
-            member_role: curMember.member_role,
             error: 'User already in this classroom',
           });
 
           legalMember.splice(i, 1);
           i--;
-        } else {
-          await this.prismaService.classroomMember.create({
-            data: {
-              classroom_id: addMemberDTO.classroom_id,
-              member_id: curMember.member_id,
-              member_role: curMember.member_role,
-            },
-          });
         }
+      }
+
+      //Send invitation mail
+      const classroomInvitation =
+        await this.prismaService.classroomInvitation.findFirst({
+          where: {
+            classroom_id: addMemberDTO.classroom_id,
+          },
+          select: {
+            student_invite_code: true,
+            teacher_invite_code: true,
+            student_invite_uri_code: true,
+            teacher_invite_uri_code: true,
+            classroom_fk: {
+              select: {
+                name: true,
+                owner_fk: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+      for (let i = 0; i < legalMember.length; i++) {
+        const curMember = legalMember[i];
+        await this.mailingService.sendInviteMail(
+          {
+            email: curMember.member_email,
+            first_name: curMember.member_first_name,
+            last_name: curMember.member_last_name,
+          },
+          classroomInvitation.classroom_fk.name,
+          {
+            first_name: classroomInvitation.classroom_fk.owner_fk.first_name,
+            last_name: classroomInvitation.classroom_fk.owner_fk.last_name,
+          },
+          classroomInvitation.student_invite_uri_code,
+        );
       }
 
       return {
@@ -641,6 +762,7 @@ export class ClassroomService {
         },
       };
     } catch (error) {
+      console.log(error);
       if (!(error instanceof HttpException)) {
         return new InternalServerErrorException(error);
       }
