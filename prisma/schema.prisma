@@ -24,10 +24,11 @@ model User {
 
   is_activated Boolean @default(false)
 
-  authorization Int @default(1)
+  authorization    Int  @default(1)
   authorization_fk Role @relation(fields: [authorization], references: [id])
 
-  student_id String? @unique
+  student_id    String?            @unique
+  student_id_fk ReservedStudentId? @relation(fields: [student_id], references: [student_id])
 
   phone_number String?
   address      String? @db.VarChar(255)
@@ -81,11 +82,13 @@ model Classroom {
   name String
 
   owner_id Int
-  owner_fk    User @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  owner_fk User @relation(fields: [owner_id], references: [id], onDelete: Cascade)
 
-  classroom_members ClassroomMember[]
-  announcements     ClassroomAnnouncement[]
-  invitations       ClassroomInvitation[]
+  classroom_members   ClassroomMember[]
+  announcements       ClassroomAnnouncement[]
+  invitations         ClassroomInvitation[]
+  grade_compositions  GradeComposition[]
+  student_grade_lists StudentGradeList[]
 
   @@map("classrooms")
 }
@@ -96,19 +99,19 @@ model ClassroomInvitation {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  student_invite_code String @unique
-  teacher_invite_code String @unique
+  student_invite_code     String @unique
+  teacher_invite_code     String @unique
   student_invite_uri_code String @unique
   teacher_invite_uri_code String @unique
 
   classroom_id Int
-  classroom_fk    Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
+  classroom_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
 
   @@map("classroom_invitations")
 }
 
 model ClassroomMember {
-  id Int @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -134,8 +137,8 @@ model ClassroomAnnouncement {
   description String
   resource    String
 
-  class_id    Int
-  class_id_fk Classroom @relation(fields: [class_id], references: [id], onDelete: Cascade)
+  classroom_id    Int
+  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
 
   comments AnnouncementComment[]
 
@@ -145,8 +148,11 @@ model ClassroomAnnouncement {
 model AnnouncementComment {
   id Int @id @default(autoincrement())
 
-  userId     Int
-  user_id_fk User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user_id    Int
+  user_id_fk User @relation(fields: [user_id], references: [id])
 
   description String
 
@@ -156,4 +162,75 @@ model AnnouncementComment {
   announcement_id_fk ClassroomAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
   @@map("announcement_comments")
+}
+
+model ReservedStudentId {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  student_id String @unique
+
+  users               User[]
+  student_grade_lists StudentGradeList[]
+
+  @@map("reserved_student_ids")
+}
+
+model GradeComposition {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name String
+
+  classroom_id    Int
+  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
+
+  grade_percent Float
+  is_finalized  Boolean @default(false)
+  index         Int
+
+  student_grade_details StudentGradeDetail[]
+
+  @@map("grade_compositions")
+}
+
+model StudentGradeList {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name  String
+  email String
+
+  student_id    String
+  student_id_fk ReservedStudentId @relation(fields: [student_id], references: [student_id])
+
+  classroom_id    Int
+  classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
+
+  student_grade_details StudentGradeDetail[]
+
+  @@unique([student_id, classroom_id])
+  @@map("student_grade_lists")
+}
+
+model StudentGradeDetail {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  grade_category    Int
+  grade_category_fk GradeComposition @relation(fields: [grade_category], references: [id], onDelete: Cascade)
+
+  grade Float
+
+  student_id    String
+  classroom_id  Int
+  student_id_fk StudentGradeList @relation(fields: [student_id, classroom_id], references: [student_id, classroom_id], onDelete: Cascade)
 }

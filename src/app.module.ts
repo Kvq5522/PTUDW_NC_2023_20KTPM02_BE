@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { MailingModule } from './mailing/mailing.module';
 import { FirebaseService } from './firebase/firebase.service';
 import { ClassroomModule } from './classroom/classroom.module';
+import { GradeModule } from './grade/grade.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ClassroomModule } from './classroom/classroom.module';
     PrismaModule,
     MailingModule,
     ClassroomModule,
+    GradeModule,
   ],
   controllers: [AppController],
   providers: [AppService, FirebaseService],
