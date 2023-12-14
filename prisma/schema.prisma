@@ -28,7 +28,7 @@ model User {
   authorization_fk Role @relation(fields: [authorization], references: [id])
 
   student_id    String?            @unique
-  student_id_fk ReservedStudentId? @relation(fields: [student_id], references: [student_id])
+  student_id_fk ReservedStudentId? @relation(fields: [student_id], references: [student_id], onDelete: SetNull)
 
   phone_number String?
   address      String? @db.VarChar(255)
@@ -158,8 +158,8 @@ model AnnouncementComment {
 
   slug String @unique @default("")
 
-  announcementId     Int
-  announcement_id_fk ClassroomAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcement_id     Int
+  announcement_id_fk ClassroomAnnouncement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
 
   @@map("announcement_comments")
 }
@@ -208,7 +208,7 @@ model StudentGradeList {
   email String
 
   student_id    String
-  student_id_fk ReservedStudentId @relation(fields: [student_id], references: [student_id])
+  student_id_fk ReservedStudentId @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
 
   classroom_id    Int
   classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
@@ -233,4 +233,6 @@ model StudentGradeDetail {
   student_id    String
   classroom_id  Int
   student_id_fk StudentGradeList @relation(fields: [student_id, classroom_id], references: [student_id, classroom_id], onDelete: Cascade)
+
+  @@map("student_grade_details")
 }
