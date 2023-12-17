@@ -158,7 +158,7 @@ model AnnouncementComment {
 
   slug String @unique @default("")
 
-  announcement_id     Int
+  announcement_id    Int
   announcement_id_fk ClassroomAnnouncement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
 
   @@map("announcement_comments")
@@ -234,5 +234,6 @@ model StudentGradeDetail {
   classroom_id  Int
   student_id_fk StudentGradeList @relation(fields: [student_id, classroom_id], references: [student_id, classroom_id], onDelete: Cascade)
 
+  @@unique([student_id, classroom_id, grade_category])
   @@map("student_grade_details")
 }
