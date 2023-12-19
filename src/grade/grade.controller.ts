@@ -21,6 +21,7 @@ import { GradeCompositionDto } from './dto';
 import { CustomFilePipe } from 'src/user/pipe';
 import { GetUser } from 'src/auth/decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { StudentGradeDTO, StudentIdDto } from './dto/grade.dto';
 
 @UseGuards(JwtGuard)
 @Controller('grade')
@@ -29,9 +30,69 @@ export class GradeController {
 
   //Teacher only
   @HttpCode(HttpStatus.OK)
-  @Get('/get-composition/:classroom_id')
-  async getGradeCompositio(@Param('classroom_id') classroom_id: number) {
+  @Get('/get-compositions/:classroom_id')
+  async getGradeCompositio(
+    @GetUser() user,
+    @Param('classroom_id') classroom_id,
+  ) {
+    classroom_id = parseInt(classroom_id);
+
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      classroom_id,
+      user.id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
     return this.gradeService.getGradeComposition(classroom_id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/add-composition')
+  async addGradeComposition(
+    @GetUser() user,
+    @Body(new ValidationPipe()) dto: GradeCompositionDto,
+  ) {
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      dto.classroom_id,
+      user.id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.addGradeComposition(dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/delete-composition')
+  async deleteGradeComposition(
+    @GetUser() user,
+    @Body('classroom_id') classroom_id,
+    @Body('composition_id') composition_id,
+  ) {
+    classroom_id = parseInt(classroom_id);
+    composition_id = parseInt(composition_id);
+
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      classroom_id,
+      user.id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.deleteGradeComposition(
+      classroom_id,
+      composition_id,
+    );
   }
 
   @HttpCode(HttpStatus.OK)
@@ -167,11 +228,12 @@ export class GradeController {
       }),
     )
     excel: Express.Multer.File,
-    @Body() body: any,
+    @Body('classroom_id') classroom_id,
+    @Body('composition_id') composition_id,
   ) {
     const { id } = user;
-    const classroom_id = parseInt(body.classroom_id);
-    const composition_id = parseInt(body.composition_id);
+    classroom_id = parseInt(classroom_id);
+    composition_id = parseInt(composition_id);
 
     const checkAuthorization = await this.gradeService.isTeacherAuthorization(
       classroom_id,
@@ -256,6 +318,28 @@ export class GradeController {
       classroom_id,
       composition_id,
     );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/edit-student-grade-by-composition')
+  async editStudentGradeByComposition(
+    @GetUser() user,
+    @Body(new ValidationPipe()) dto: StudentGradeDTO,
+  ) {
+    const { id } = user;
+    const { classroom_id } = dto;
+
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      classroom_id,
+      id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.editStudentGradeByComposition(dto);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -350,6 +434,28 @@ export class GradeController {
       );
 
     return this.gradeService.getStudentGradeBoard(classroom_id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/map-student-id-in-grade-board')
+  async mapStudentIdInGradeBoard(
+    @GetUser() user,
+    @Body(new ValidationPipe()) dto: StudentIdDto,
+  ) {
+    const { id } = user;
+    const { classroom_id } = dto;
+
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      classroom_id,
+      id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.mapStudentIdInGradeBoard(dto);
   }
 
   //Student only

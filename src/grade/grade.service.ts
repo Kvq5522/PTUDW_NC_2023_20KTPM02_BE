@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { GradeCompositionDto } from './dto';
 
 import { ExcelService } from 'src/excel/excel.service';
+import { StudentGradeDTO, StudentIdDto } from './dto/grade.dto';
 
 @Injectable()
 export class GradeService {
@@ -22,6 +23,9 @@ export class GradeService {
         where: {
           classroom_id,
         },
+        orderBy: {
+          index: 'asc',
+        },
       });
 
       return {
@@ -34,6 +38,63 @@ export class GradeService {
         throw new InternalServerErrorException(
           error.message || 'Internal Server Error',
         );
+      }
+
+      throw error;
+    }
+  }
+
+  async addGradeComposition(dto: GradeCompositionDto) {
+    try {
+      const { classroom_id, grade_compositions } = dto;
+
+      if (grade_compositions.length === 0)
+        throw new BadRequestException('Grade composition list is empty');
+
+      const newCompositions = await this.prismaService.gradeComposition.create({
+        data: {
+          name: grade_compositions[0].name,
+          grade_percent: grade_compositions[0].grade_percent,
+          classroom_id: classroom_id,
+          index: grade_compositions[0].index,
+        },
+      });
+
+      return {
+        statusCode: 200,
+        message: 'OK',
+        metadata: newCompositions,
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
+    }
+  }
+
+  async deleteGradeComposition(classroom_id: number, composition_id: number) {
+    try {
+      const deletedComposition =
+        await this.prismaService.gradeComposition.delete({
+          where: {
+            classroom_id: classroom_id,
+            id: composition_id,
+          },
+        });
+
+      if (!deletedComposition)
+        throw new BadRequestException('Invalid composition id');
+
+      return {
+        statusCode: 200,
+        message: 'Deleted grade composition successfully',
+        metadata: deletedComposition,
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
       }
 
       throw error;
@@ -90,9 +151,7 @@ export class GradeService {
       }
 
       for (const comp of grade_compositions) {
-        const found = currentCompostions.find(
-          (x) => x.name === comp.name && x.index === comp.index,
-        );
+        const found = currentCompostions.find((x) => x.name === comp.name);
 
         if (!found) {
           addedList.push({
@@ -605,6 +664,7 @@ export class GradeService {
     composition_id: number,
   ) {
     try {
+      //get student grade list of classroom
       const studentGradeList =
         await this.prismaService.studentGradeList.findMany({
           where: {
@@ -612,6 +672,7 @@ export class GradeService {
           },
         });
 
+      //get student grade details of classroom
       const studentGradeDetails =
         await this.prismaService.studentGradeDetail.findMany({
           where: {
@@ -691,6 +752,12 @@ export class GradeService {
           grade: true,
           grade_category: true,
           student_id: true,
+          student_id_fk: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
         },
       });
       const gradeStudentIds = grades.map((x) => x.student_id);
@@ -710,6 +777,10 @@ export class GradeService {
           grade: 0,
           grade_category: composition_id,
           student_id: student.student_id,
+          student_id_fk: {
+            name: student.name,
+            email: student.email,
+          },
         });
       }
 
@@ -725,6 +796,95 @@ export class GradeService {
         throw new InternalServerErrorException(
           error.message || 'Internal Server Error',
         );
+      }
+
+      throw error;
+    }
+  }
+
+  async editStudentGradeByComposition(dto: StudentGradeDTO) {
+    try {
+      const studentGrades =
+        await this.prismaService.studentGradeDetail.findMany({
+          where: {
+            classroom_id: dto.classroom_id,
+            grade_category: dto.grade_category,
+          },
+        });
+
+      const updatedList = [];
+      const addedList = [];
+
+      for (const student of dto.student_grades) {
+        const found = studentGrades.find(
+          (x) => x.student_id === student.student_id,
+        );
+
+        if (!found) {
+          addedList.push({
+            student_id: student.student_id,
+            classroom_id: dto.classroom_id,
+            grade_category: dto.grade_category,
+            grade: student.grade,
+          });
+        } else {
+          updatedList.push({
+            ...found,
+            grade: student.grade,
+          });
+        }
+      }
+
+      let updatedSuccess = [];
+      for (const student of updatedList) {
+        const updatedStudent = this.prismaService.studentGradeDetail.upsert({
+          where: {
+            student_id_classroom_id_grade_category: {
+              student_id: student.student_id,
+              classroom_id: dto.classroom_id,
+              grade_category: dto.grade_category,
+            },
+          },
+          create: {
+            student_id: student.student_id,
+            classroom_id: dto.classroom_id,
+            grade_category: dto.grade_category,
+            grade: parseFloat(student.grade),
+          },
+          update: {
+            grade: parseFloat(student.grade),
+          },
+        });
+
+        updatedSuccess.push(updatedStudent);
+      }
+      updatedSuccess = await this.prismaService.$transaction(updatedSuccess);
+
+      let addedSuccess = [];
+      for (const student of addedList) {
+        const addedGrade = this.prismaService.studentGradeDetail.create({
+          data: {
+            student_id: student.student_id,
+            classroom_id: dto.classroom_id,
+            grade_category: dto.grade_category,
+            grade: parseFloat(student.grade),
+          },
+        });
+
+        addedSuccess.push(addedGrade);
+      }
+      addedSuccess = await this.prismaService.$transaction(addedSuccess);
+
+      return {
+        statusCode: 200,
+        message: 'Edit student grade by composition successfully',
+        metadata: {
+          success: updatedSuccess.concat(addedSuccess),
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
       }
 
       throw error;
@@ -1129,9 +1289,13 @@ export class GradeService {
           where: {
             classroom_id: classroom_id,
           },
+          orderBy: {
+            index: 'asc',
+          },
         })
       ).map((x) => {
         return {
+          name: x.name,
           grade_percent: x.grade_percent,
           grade_category: x.id,
         };
@@ -1193,10 +1357,20 @@ export class GradeService {
         });
       }
 
+      const gradeCompositionNamesAndIds = gradeCompositions.map((x) => {
+        return {
+          name: x.name,
+          grade_category: x.grade_category,
+        };
+      });
+
       return {
         statusCode: 200,
         message: 'Get student grade board successfully',
-        metadata: result,
+        metadata: {
+          grades: result,
+          grade_compositions: gradeCompositionNamesAndIds,
+        },
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {
@@ -1209,7 +1383,99 @@ export class GradeService {
     }
   }
 
-  //Student only
+  async mapStudentIdInGradeBoard(dto: StudentIdDto) {
+    try {
+      const { classroom_id, student_ids } = dto;
+
+      //check if student id is duplicated
+      const studentIdSet = new Set<string>();
+
+      for (const student of student_ids) {
+        if (studentIdSet.has(student.student_id)) {
+          throw new BadRequestException(
+            `Student id ${student.student_id} is duplicated`,
+          );
+        }
+
+        studentIdSet.add(student.student_id);
+      }
+
+      //get existed student list in classroom
+      const existedStudents =
+        await this.prismaService.studentGradeList.findMany({
+          where: {
+            classroom_id: classroom_id,
+          },
+        });
+
+      //get reserved student id
+      const reservedStudentIds = (
+        await this.prismaService.reservedStudentId.findMany({})
+      ).map((x) => x.student_id);
+
+      //check if student id is updated
+      const updatedList = [];
+      const failList = [];
+
+      for (const student of student_ids) {
+        const found = existedStudents.find(
+          (x) => x.email === student.email && x.name === student.name,
+        );
+
+        if (!found || reservedStudentIds.includes(student.student_id)) {
+          failList.push(student);
+          continue;
+        }
+
+        updatedList.push({
+          ...found,
+          student_id: student.student_id,
+        });
+      }
+
+      //delete student grades
+      let updatedSuccess = [];
+      let deleteReservedSuccess = [];
+      for (const student of updatedList) {
+        const updatedStudent = this.prismaService.studentGradeList.update({
+          where: {
+            id: student.id,
+          },
+          data: {
+            student_id: student.student_id,
+          },
+        });
+
+        updatedSuccess.push(updatedStudent);
+
+        const deleteReserved = this.prismaService.reservedStudentId.deleteMany({
+          where: {
+            student_id: student.student_id,
+          },
+        });
+
+        deleteReservedSuccess.push(deleteReserved);
+      }
+      updatedSuccess = await this.prismaService.$transaction(updatedSuccess);
+      deleteReservedSuccess = await this.prismaService.$transaction(
+        deleteReservedSuccess,
+      );
+
+      return {
+        statusCode: 200,
+        message: 'Map student id in grade board successfully',
+        metadata: {
+          success: updatedSuccess,
+          failed: failList,
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+      throw error;
+    }
+  }
 
   async isTeacherAuthorization(classroom_id: number, user_id: number) {
     try {
@@ -1230,4 +1496,6 @@ export class GradeService {
       return false;
     }
   }
+
+  //Student only
 }
