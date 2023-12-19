@@ -257,11 +257,7 @@ export class GradeService {
       });
 
       const existedStudentIds = (
-        await this.prismaService.reservedStudentId.findMany({
-          select: {
-            student_id: true,
-          },
-        })
+        await this.prismaService.reservedStudentId.findMany({})
       ).map((x) => x.student_id);
 
       const updatedList = [];
@@ -287,7 +283,10 @@ export class GradeService {
         );
 
         if (!student['Student Name'] || !student['Student ID']) {
-          failList.push(student);
+          failList.push({
+            ...{ student },
+            reason: 'Student name or student id is empty',
+          });
           continue;
         }
 
@@ -344,17 +343,20 @@ export class GradeService {
       const addedFailed = [];
       for (const student of addedList) {
         if (existedStudentIds.includes(student.student_id)) {
-          addedFailed.push(student);
+          addedFailed.push({
+            ...student,
+            reason: 'Student id is duplicated',
+          });
           continue;
+        } else if (!students.includes(student.student_id)) {
+          const reserved = this.prismaService.reservedStudentId.create({
+            data: {
+              student_id: student.student_id,
+            },
+          });
+
+          reservedSuccess.push(reserved);
         }
-
-        const reserved = this.prismaService.reservedStudentId.create({
-          data: {
-            student_id: student.student_id,
-          },
-        });
-
-        reservedSuccess.push(reserved);
 
         const addedStudent = this.prismaService.studentGradeList.create({
           data: {
@@ -471,7 +473,7 @@ export class GradeService {
 
       const nameSet = new Map<string, string>(); // same name, but different student id
 
-      //check if student name, student id is duplicated
+      //check if student name, student id is duplicated in data
       for (const student of parseData) {
         if (
           nameSet.has(student['Student Name']) &&
@@ -485,6 +487,7 @@ export class GradeService {
         nameSet.set(student['Student Name'], student['Student ID']);
       }
 
+      //get student grade details of classroom
       const studentGrades =
         await this.prismaService.studentGradeDetail.findMany({
           where: {
@@ -493,13 +496,14 @@ export class GradeService {
           },
         });
 
+      //get student list of classroom
       const existedStudentIds = (
+        await this.prismaService.reservedStudentId.findMany({})
+      ).map((x) => x.student_id);
+      const existedStudentIdsInClassroom = (
         await this.prismaService.studentGradeList.findMany({
           where: {
             classroom_id: classroom_id,
-          },
-          select: {
-            student_id: true,
           },
         })
       ).map((x) => x.student_id);
@@ -608,7 +612,17 @@ export class GradeService {
             },
           });
 
+          // check if reserved student is created or not
+          if (!reserved) {
+            addedFailed.push({
+              ...student,
+              reason: 'Student id is duplicated',
+            });
+            continue;
+          }
+
           reservedSuccess.push(reserved);
+          existedStudentIdsInClassroom.push(student.student_id);
 
           const addedStudent = this.prismaService.studentGradeList.create({
             data: {
@@ -622,6 +636,17 @@ export class GradeService {
           addedStudentSuccess.push(addedStudent);
         }
 
+        if (
+          !existedStudentIdsInClassroom.includes(student.student_id) ||
+          !existedStudentIds.includes(student.student_id)
+        ) {
+          addedFailed.push({
+            ...student,
+            reason: 'Student is not in student list',
+          });
+          continue;
+        }
+
         const addedGrade = this.prismaService.studentGradeDetail.create({
           data: {
             student_id: student.student_id,
@@ -633,6 +658,7 @@ export class GradeService {
 
         addedGradeSuccess.push(addedGrade);
       }
+
       reservedSuccess = await this.prismaService.$transaction(reservedSuccess);
       addedStudentSuccess =
         await this.prismaService.$transaction(addedStudentSuccess);
@@ -648,7 +674,6 @@ export class GradeService {
         },
       };
     } catch (error) {
-      console.log(error);
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(
           error.message || 'Internal Server Error',
@@ -1140,8 +1165,6 @@ export class GradeService {
         },
       };
     } catch (error) {
-      console.log(error);
-
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(
           error.message || 'Internal Server Error',
@@ -1271,7 +1294,6 @@ export class GradeService {
 
       return excelFile;
     } catch (error) {
-      console.log(error);
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(
           error.message || 'Internal Server Error',
@@ -1422,40 +1444,70 @@ export class GradeService {
           (x) => x.email === student.email && x.name === student.name,
         );
 
-        if (!found || reservedStudentIds.includes(student.student_id)) {
-          failList.push(student);
+        if (!found) {
+          failList.push({
+            ...student,
+            reason: 'Student is not in student list',
+          });
           continue;
         }
 
-        updatedList.push({
-          ...found,
-          student_id: student.student_id,
-        });
+        if (
+          reservedStudentIds.includes(student.student_id) &&
+          student.student_id !== found.student_id
+        ) {
+          failList.push({
+            ...student,
+            reason: 'Student id is duplicated',
+          });
+          continue;
+        }
+
+        if (found.student_id !== student.student_id) {
+          updatedList.push({
+            ...found,
+            old_student_id: found.student_id,
+            new_student_id: student.student_id,
+          });
+        }
       }
 
       //delete student grades
+      let reservedSuccess = [];
       let updatedSuccess = [];
       let deleteReservedSuccess = [];
       for (const student of updatedList) {
+        //create new reserved student id
+        const newReserved = this.prismaService.reservedStudentId.create({
+          data: {
+            student_id: student.new_student_id,
+          },
+        });
+
+        reservedSuccess.push(newReserved);
+
+        //update student id
         const updatedStudent = this.prismaService.studentGradeList.update({
           where: {
             id: student.id,
           },
           data: {
-            student_id: student.student_id,
+            student_id: student.new_student_id,
           },
         });
 
         updatedSuccess.push(updatedStudent);
 
-        const deleteReserved = this.prismaService.reservedStudentId.deleteMany({
+        // delete old reserved student id
+        const deleteReserved = this.prismaService.reservedStudentId.delete({
           where: {
-            student_id: student.student_id,
+            student_id: student.old_student_id,
           },
         });
 
         deleteReservedSuccess.push(deleteReserved);
       }
+      reservedSuccess = await this.prismaService.$transaction(reservedSuccess);
       updatedSuccess = await this.prismaService.$transaction(updatedSuccess);
       deleteReservedSuccess = await this.prismaService.$transaction(
         deleteReservedSuccess,
@@ -1470,6 +1522,7 @@ export class GradeService {
         },
       };
     } catch (error) {
+      console.log(error);
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(error);
       }
