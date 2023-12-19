@@ -103,9 +103,9 @@ export class AuthService {
       };
     } catch (error: any) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+      throw error;
     }
   }
 
@@ -145,9 +145,9 @@ export class AuthService {
       );
     } catch (error) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+      throw error;
     }
   }
 
@@ -179,9 +179,9 @@ export class AuthService {
       );
     } catch (error) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+      throw error;
     }
   }
 
@@ -225,9 +225,9 @@ export class AuthService {
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+      throw error;
     }
   }
 
@@ -279,7 +279,11 @@ export class AuthService {
         metadata: {},
       };
     } catch (error) {
-      return error;
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
     }
   }
 
@@ -321,9 +325,9 @@ export class AuthService {
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+      throw error;
     }
   }
 

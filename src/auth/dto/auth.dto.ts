@@ -40,4 +40,8 @@ export class AuthDto {
   @ValidateIf((o) => o.gender !== undefined)
   @IsString()
   gender: string;
+
+  @ValidateIf((o) => o.student_id !== undefined)
+  @IsString()
+  student_id: string;
 }

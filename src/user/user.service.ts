@@ -24,10 +24,6 @@ export class UserService {
         where: {
           id: userId,
         },
-        select: {
-          password: true,
-          avatar: true,
-        },
       });
 
       if (!checkUser) {
@@ -62,36 +58,121 @@ export class UserService {
       }
 
       const updatedData = {};
+      let updateStudentId = true;
 
       for (const keys in dto) {
         if (!dto[keys]) continue;
 
+        if (keys === 'student_id') {
+          const existedStudentIdInUser =
+            await this.prismaService.user.findFirst({
+              where: {
+                student_id: dto[keys],
+              },
+            });
+
+          const existedStudentIdInStudentGradeList =
+            await this.prismaService.studentGradeList.findFirst({
+              where: {
+                student_id: dto[keys],
+              },
+            });
+
+          if (
+            (existedStudentIdInUser &&
+              existedStudentIdInUser.email !== checkUser.email) ||
+            (existedStudentIdInStudentGradeList &&
+              existedStudentIdInStudentGradeList.email !== checkUser.email)
+          ) {
+            updateStudentId = false;
+            continue;
+          }
+        }
+
         updatedData[keys] = dto[keys];
+      }
+
+      if (!dto.student_id) {
+        updateStudentId = false;
       }
 
       if (downloadURL) {
         updatedData['avatar'] = downloadURL;
       }
 
-      const udpatedUser = await this.prismaService.user.update({
+      //reserve student id
+      if (updateStudentId) {
+        const checkStudentId =
+          await this.prismaService.reservedStudentId.findFirst({
+            where: {
+              student_id: dto.student_id,
+            },
+          });
+
+        if (!checkStudentId) {
+          const newReservedStudentId =
+            this.prismaService.reservedStudentId.create({
+              data: {
+                student_id: dto.student_id,
+              },
+            });
+
+          const reserveSucess = await this.prismaService.$transaction([
+            newReservedStudentId,
+          ]);
+
+          if (!reserveSucess.length) {
+            throw new InternalServerErrorException(
+              'Create new reserved student id failed',
+            );
+          }
+        }
+      }
+
+      const updatedUser = await this.prismaService.user.update({
         where: {
           id: userId,
         },
-        data: updatedData,
+        data: {
+          ...updatedData,
+          student_id: updateStudentId ? dto.student_id : checkUser.student_id,
+        },
       });
 
-      delete udpatedUser.password;
+      //delete reserved student id if not used
+      if (updateStudentId) {
+        const checkStudentGradeIdUsage =
+          await this.prismaService.studentGradeList.findFirst({
+            where: {
+              student_id: checkUser.student_id,
+            },
+          });
+
+        if (!checkStudentGradeIdUsage) {
+          await this.prismaService.reservedStudentId.delete({
+            where: {
+              student_id: checkUser.student_id,
+            },
+          });
+        }
+      }
+
+      delete updatedUser.password;
 
       return {
         statusCode: HttpStatus.OK,
         message: 'Update user successfully',
-        metadata: udpatedUser,
+        metadata: {
+          userProfile: updatedUser,
+          isUpdateStudentId: updateStudentId,
+        },
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {
-        return new InternalServerErrorException(error);
+        throw new InternalServerErrorException(error);
       }
-      return error;
+
+      throw error;
     }
   }
 }
