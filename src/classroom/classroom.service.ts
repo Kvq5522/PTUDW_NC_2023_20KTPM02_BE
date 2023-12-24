@@ -278,6 +278,9 @@ export class ClassroomService {
       const classroomList = await this.prismaService.classroomMember.findMany({
         where: {
           member_id: user_id,
+          classroom_id_fk: {
+            is_archive: false,
+          },
         },
         select: {
           classroom_id: true,
@@ -322,6 +325,11 @@ export class ClassroomService {
               },
               {
                 member_id: user_id,
+              },
+              {
+                classroom_id_fk: {
+                  is_archive: false,
+                },
               },
             ],
           },
@@ -384,6 +392,11 @@ export class ClassroomService {
               },
               {
                 member_id: user_id,
+              },
+              {
+                classroom_id_fk: {
+                  is_archive: false,
+                },
               },
             ],
           },

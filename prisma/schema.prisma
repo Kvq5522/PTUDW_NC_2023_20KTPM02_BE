@@ -23,6 +23,7 @@ model User {
   last_name  String @db.VarChar(255)
 
   is_activated Boolean @default(false)
+  is_banned    Boolean @default(false)
 
   authorization    Int  @default(1)
   authorization_fk Role @relation(fields: [authorization], references: [id])
@@ -40,6 +41,7 @@ model User {
   classroom_members     ClassroomMember[]
   announcement_comments AnnouncementComment[]
   owned_classrooms      Classroom[]
+  ClassroomAnnouncement ClassroomAnnouncement[]
 
   @@map("users")
 }
@@ -81,6 +83,8 @@ model Classroom {
 
   name String
 
+  is_archive Boolean @default(false)
+
   owner_id Int
   owner_fk User @relation(fields: [owner_id], references: [id], onDelete: Cascade)
 
@@ -89,6 +93,7 @@ model Classroom {
   invitations         ClassroomInvitation[]
   grade_compositions  GradeComposition[]
   student_grade_lists StudentGradeList[]
+  Notification        Notification[]
 
   @@map("classrooms")
 }
@@ -128,19 +133,66 @@ model ClassroomMember {
   @@map("classroom_members")
 }
 
+enum AnnouncementType {
+  GRADE_ANNOUNCEMENT
+  GRADE_REVIEW
+  CLASSROOM_ANNOUNCEMENT
+  OTHERS
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  title       String
+  description String @default("")
+
+  classroom_id Int?
+  classroom_fk Classroom? @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
+
+  announcement_id Int?
+  announcement_fk ClassroomAnnouncement? @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  to_members String
+  has_seen   String @default("")
+
+  type AnnouncementType
+
+  @@map("notifications")
+}
+
 model ClassroomAnnouncement {
   id Int @id @default(autoincrement())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  title String @default("Announcement")
+
   description String
-  resource    String
+
+  created_by    Int
+  created_by_fk User @relation(fields: [created_by], references: [id])
+
+  //Map id of users to string, seperated by comma
+  to_members String
+  //Map id of users who have seen this announcement to string, seperated by comma
+  has_seen   String @default("")
+
+  type AnnouncementType
+
+  grade_category    Int?
+  grade_category_fk GradeComposition? @relation(fields: [grade_category], references: [id])
+
+  expected_grade Float?
 
   classroom_id    Int
   classroom_id_fk Classroom @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
 
-  comments AnnouncementComment[]
+  comments     AnnouncementComment[]
+  Notification Notification[]
 
   @@map("classroom_announcements")
 }
@@ -194,6 +246,7 @@ model GradeComposition {
   index         Int
 
   student_grade_details StudentGradeDetail[]
+  ClassroomAnnouncement ClassroomAnnouncement[]
 
   @@map("grade_compositions")
 }

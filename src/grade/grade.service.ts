@@ -5,10 +5,15 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { GradeCompositionDto } from './dto';
+import {
+  GradeCompositionDto,
+  GradeReviewDTO,
+  StudentGradeDTO,
+  StudentIdDto,
+} from './dto';
 
 import { ExcelService } from 'src/excel/excel.service';
-import { StudentGradeDTO, StudentIdDto } from './dto/grade.dto';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class GradeService {
@@ -17,6 +22,7 @@ export class GradeService {
     private excelService: ExcelService,
   ) {}
 
+  // Both teacher and student
   async getGradeComposition(classroom_id: number) {
     try {
       const compositions = await this.prismaService.gradeComposition.findMany({
@@ -44,6 +50,7 @@ export class GradeService {
     }
   }
 
+  //Teacher only
   async addGradeComposition(dto: GradeCompositionDto) {
     try {
       const { classroom_id, grade_compositions } = dto;
@@ -101,7 +108,7 @@ export class GradeService {
     }
   }
 
-  async editGradeCompostition(dto: GradeCompositionDto) {
+  async editGradeCompostition(dto: GradeCompositionDto, user_id: number) {
     try {
       const { classroom_id, grade_compositions } = dto;
 
@@ -195,6 +202,90 @@ export class GradeService {
       }
       updatedSuccess = await this.prismaService.$transaction(updatedSuccess);
 
+      let createAnnouncement = [];
+      let createNotification = [];
+      const studentsAccountIds = (
+        await this.prismaService.classroomMember.findMany({
+          where: {
+            classroom_id: classroom_id,
+            member_role: 1,
+          },
+          select: {
+            id: true,
+          },
+        })
+      )
+        .map((x) => x.id)
+        .join(',');
+
+      for (const comp of updatedSuccess) {
+        const oldComp = currentCompostions.find((x) => x.id === comp.id);
+
+        if (
+          //Check if comp is changed from not finalized to finalized
+          comp.is_finalized &&
+          comp.is_finalized !== oldComp.is_finalized
+        ) {
+          const announcement = this.prismaService.classroomAnnouncement.create({
+            data: {
+              classroom_id: classroom_id,
+              created_by: user_id,
+              title: `Grade ${comp.name} is finalized`,
+              description: `Grade ${comp.name} is finalized`,
+              type: 'GRADE_ANNOUNCEMENT',
+              to_members: studentsAccountIds,
+              grade_category: comp.id,
+            },
+          });
+
+          createAnnouncement.push(announcement);
+
+          const notification = this.prismaService.notification.create({
+            data: {
+              classroom_id: classroom_id,
+              title: `Grade ${comp.name} is finalized`,
+              type: 'GRADE_ANNOUNCEMENT',
+              to_members: studentsAccountIds,
+            },
+          });
+
+          createNotification.push(notification);
+        } else if (
+          //Check if comp is changed from finalized to not finalized
+          !comp.is_finalized &&
+          comp.is_finalized !== oldComp.is_finalized
+        ) {
+          const announcement = this.prismaService.classroomAnnouncement.create({
+            data: {
+              classroom_id: classroom_id,
+              created_by: user_id,
+              title: `Grade ${comp.name} is closed for editing`,
+              description: `Grade ${comp.name} is closed for editing`,
+              type: 'GRADE_ANNOUNCEMENT',
+              to_members: studentsAccountIds,
+              grade_category: comp.id,
+            },
+          });
+
+          createAnnouncement.push(announcement);
+
+          const notification = this.prismaService.notification.create({
+            data: {
+              classroom_id: classroom_id,
+              title: `Grade ${comp.name} is closed for editing`,
+              type: 'GRADE_ANNOUNCEMENT',
+              to_members: studentsAccountIds,
+            },
+          });
+
+          createNotification.push(notification);
+        }
+      }
+      createAnnouncement =
+        await this.prismaService.$transaction(createAnnouncement);
+      createNotification =
+        await this.prismaService.$transaction(createNotification);
+
       const addedSuccess = await this.prismaService.gradeComposition.createMany(
         {
           data: addedList,
@@ -207,6 +298,7 @@ export class GradeService {
         metadata: updatedSuccess.concat(addedSuccess),
       };
     } catch (error) {
+      console.log(error);
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(error);
       }
@@ -1551,4 +1643,274 @@ export class GradeService {
   }
 
   //Student only
+  async getStudentGrades(classroom_id: number, user: User) {
+    try {
+      const studentInGradeList =
+        await this.prismaService.studentGradeList.findFirst({
+          where: {
+            classroom_id: classroom_id,
+            email: user.email,
+          },
+        });
+
+      if (!studentInGradeList)
+        throw new BadRequestException("Student doesn't exist in grade list");
+
+      if (studentInGradeList.student_id !== user.student_id)
+        throw new BadRequestException(
+          `Please map '${studentInGradeList.student_id}' to your account to view your grades`,
+        );
+
+      const gradeCompositions = (
+        await this.prismaService.gradeComposition.findMany({
+          where: {
+            classroom_id: classroom_id,
+          },
+          orderBy: {
+            index: 'asc',
+          },
+        })
+      ).map((x) => {
+        return {
+          name: x.name,
+          grade_percent: x.grade_percent,
+          grade_category: x.id,
+          is_finalized: x.is_finalized,
+        };
+      });
+      const gradeCompositionIds = gradeCompositions.map(
+        (x) => x.grade_category,
+      );
+
+      const grades = await this.prismaService.studentGradeDetail.findMany({
+        where: {
+          classroom_id: classroom_id,
+          grade_category: {
+            in: gradeCompositionIds,
+          },
+          student_id: user.student_id,
+        },
+      });
+
+      //get student list
+      const students = await this.prismaService.studentGradeList.findMany({
+        where: {
+          classroom_id: classroom_id,
+          student_id: user.student_id,
+        },
+      });
+
+      //group students and grades by student id
+      const result = [];
+      for (const student of students) {
+        const gradeFilter = [];
+        gradeCompositionIds.forEach((id) => {
+          const found = grades.find(
+            (x) =>
+              x.grade_category === id && x.student_id === student.student_id,
+          );
+
+          if (!found) {
+            gradeFilter.push({
+              grade: NaN,
+              grade_category: id,
+              grade_percent: gradeCompositions.find(
+                (y) => id === y.grade_category,
+              )['grade_percent'],
+            });
+          } else {
+            gradeFilter.push({
+              grade: gradeCompositions.find((x) => x.grade_category === id)
+                .is_finalized
+                ? found.grade
+                : NaN,
+              grade_category: found.grade_category,
+              grade_percent: gradeCompositions.find(
+                (y) => id === y.grade_category,
+              )['grade_percent'],
+            });
+          }
+        });
+
+        result.push({
+          name: student.name,
+          student_id: student.student_id,
+          email: student.email,
+          grades: gradeFilter,
+        });
+      }
+
+      const gradeCompositionNamesAndIds = gradeCompositions.map((x) => {
+        return {
+          name: x.name,
+          grade_category: x.grade_category,
+        };
+      });
+
+      return {
+        statusCode: 200,
+        message: 'Get student grade board successfully',
+        metadata: {
+          grades: result,
+          grade_compositions: gradeCompositionNamesAndIds,
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(
+          error.message || 'Internal Server Error',
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async createGradeReview(dto: GradeReviewDTO, user: User) {
+    try {
+      const { classroom_id, grade_category, description, expected_grade } = dto;
+
+      const getTeacherIds = (
+        await this.prismaService.classroomMember.findMany({
+          where: {
+            classroom_id: classroom_id,
+            member_role: {
+              in: [2, 3],
+            },
+          },
+          select: {
+            member_id: true,
+          },
+        })
+      ).map((x) => x.member_id);
+
+      const mapTeacherIdsToString = getTeacherIds
+        .map((x) => x.toString())
+        .join(',');
+
+      const existedGradeReview =
+        await this.prismaService.classroomAnnouncement.findFirst({
+          where: {
+            classroom_id: classroom_id,
+            grade_category: grade_category,
+            created_by: user.id,
+          },
+        });
+
+      if (existedGradeReview) {
+        const updatedGradeReview =
+          await this.prismaService.classroomAnnouncement.update({
+            where: {
+              id: existedGradeReview.id,
+            },
+            data: {
+              description: description,
+              expected_grade: expected_grade,
+              to_members: mapTeacherIdsToString,
+            },
+            select: {
+              created_by: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          });
+
+        await this.prismaService.notification.create({
+          data: {
+            title: existedGradeReview.title,
+            announcement_id: existedGradeReview.id,
+            description: description,
+            type: 'GRADE_REVIEW',
+            classroom_id: classroom_id,
+            to_members: mapTeacherIdsToString,
+          },
+        });
+
+        return {
+          statusCode: 201,
+          message: 'Create grade review successfully',
+          metadata: {
+            grade_review: updatedGradeReview,
+            teacher_ids: mapTeacherIdsToString,
+          },
+        };
+      }
+
+      const gradeComposition =
+        await this.prismaService.gradeComposition.findFirst({
+          where: {
+            id: grade_category,
+            classroom_id: classroom_id,
+          },
+        });
+
+      const newGradeReview =
+        await this.prismaService.classroomAnnouncement.create({
+          data: {
+            classroom_id: classroom_id,
+            created_by: user.id,
+            grade_category: grade_category,
+            title: `${user.first_name} ${user.last_name} needs to review grade for "${gradeComposition.name}"`,
+            description: description,
+            expected_grade: expected_grade,
+            type: 'GRADE_REVIEW',
+            to_members: mapTeacherIdsToString,
+          },
+          select: {
+            created_by: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+      await this.prismaService.notification.create({
+        data: {
+          title: `${user.first_name} ${user.last_name} needs to review grade for "${gradeComposition.name}"`,
+          announcement_id: existedGradeReview.id,
+          description: description,
+          type: 'GRADE_REVIEW',
+          classroom_id: classroom_id,
+          to_members: mapTeacherIdsToString,
+        },
+      });
+
+      return {
+        statusCode: 201,
+        message: 'Create grade review successfully',
+        metadata: {
+          grade_review: newGradeReview,
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
+    }
+  }
+
+  async isStudentAuthorization(classroom_id: number, user_id: number) {
+    try {
+      const existedStudent = await this.prismaService.classroomMember.findFirst(
+        {
+          where: {
+            classroom_id: classroom_id,
+            member_id: user_id,
+          },
+        },
+      );
+
+      if (!existedStudent || existedStudent.member_role < 1)
+        throw new Error('Not authorized');
+
+      return true;
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
+    }
+  }
 }

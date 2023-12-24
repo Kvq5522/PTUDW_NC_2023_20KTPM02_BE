@@ -85,6 +85,8 @@ export class AuthService {
       if (!user.is_activated)
         throw new ForbiddenException('User is not activated');
 
+      if (user.is_banned) throw new ForbiddenException('User is banned');
+
       const match = await bcrypt.compare(dto.password, user.password);
 
       if (!match) throw new ForbiddenException('Password is wrong');

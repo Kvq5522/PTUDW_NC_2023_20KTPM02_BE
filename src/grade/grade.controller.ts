@@ -17,39 +17,29 @@ import {
 } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard';
 import { GradeService } from './grade.service';
-import { GradeCompositionDto } from './dto';
+import { GradeCompositionDto, StudentGradeDTO, StudentIdDto } from './dto';
 import { CustomFilePipe } from 'src/user/pipe';
 import { GetUser } from 'src/auth/decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { StudentGradeDTO, StudentIdDto } from './dto/grade.dto';
 
 @UseGuards(JwtGuard)
 @Controller('grade')
 export class GradeController {
   constructor(private gradeService: GradeService) {}
 
-  //Teacher only
+  // Both teacher and student
   @HttpCode(HttpStatus.OK)
   @Get('/get-compositions/:classroom_id')
-  async getGradeCompositio(
+  async getGradeComposition(
     @GetUser() user,
     @Param('classroom_id') classroom_id,
   ) {
     classroom_id = parseInt(classroom_id);
 
-    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
-      classroom_id,
-      user.id,
-    );
-
-    if (!checkAuthorization)
-      throw new ForbiddenException(
-        "You don't have permission to access this resource",
-      );
-
     return this.gradeService.getGradeComposition(classroom_id);
   }
 
+  //Teacher only
   @HttpCode(HttpStatus.OK)
   @Post('/add-composition')
   async addGradeComposition(
@@ -111,7 +101,7 @@ export class GradeController {
         "You don't have permission to access this resource",
       );
 
-    return this.gradeService.editGradeCompostition(dto);
+    return this.gradeService.editGradeCompostition(dto, user.id);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -459,4 +449,43 @@ export class GradeController {
   }
 
   //Student only
+  @HttpCode(HttpStatus.OK)
+  @Get('/get-student-grades/:classroom_id')
+  async getStudentGrades(@GetUser() user, @Param('classroom_id') classroom_id) {
+    classroom_id = parseInt(classroom_id);
+
+    const checkAuthorization = await this.gradeService.isStudentAuthorization(
+      classroom_id,
+      user.id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.getStudentGrades(classroom_id, user);
+  }
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post('/create-grade-review')
+  async createGradeReview(
+    @GetUser() user,
+    @Body(new ValidationPipe()) dto: any,
+  ) {
+    const { id } = user;
+    const { classroom_id } = dto;
+
+    const checkAuthorization = await this.gradeService.isStudentAuthorization(
+      classroom_id,
+      id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.createGradeReview(dto, user);
+  }
 }
