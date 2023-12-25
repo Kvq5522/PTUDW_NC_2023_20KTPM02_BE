@@ -1,10 +1,13 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { AnnouncementService } from './announcement.service';
@@ -47,18 +50,84 @@ export class AnnouncementController {
     announcement_id = parseInt(announcement_id);
     classroom_id = parseInt(classroom_id);
 
-    const checkAuthorization =
-      await this.announcementService.isTeacherAuthorization(
-        classroom_id,
+    const checkInClassroom = await this.announcementService.isMemberOfClassroom(
+      classroom_id,
+      user.id,
+    );
+
+    const checkIsRelated =
+      await this.announcementService.isRelatedToAnnouncement(
+        announcement_id,
         user.id,
       );
 
-    if (!checkAuthorization)
-      throw new ForbiddenException("You're not a teacher of this classroom");
+    if (!checkInClassroom || !checkIsRelated)
+      throw new ForbiddenException("You're not allowed to view this");
 
     return await this.announcementService.getAnnouncementDetail(
       classroom_id,
       announcement_id,
     );
+  }
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post('/create-comment/:classroom_id/:announcement_id')
+  async createComment(
+    @GetUser() user: User,
+    @Param('announcement_id') announcement_id,
+    @Param('classroom_id') classroom_id,
+    @Body('description') description: string,
+  ) {
+    announcement_id = parseInt(announcement_id);
+    classroom_id = parseInt(classroom_id);
+
+    const checkInClassroom = await this.announcementService.isMemberOfClassroom(
+      classroom_id,
+      user.id,
+    );
+
+    const checkIsRelated =
+      await this.announcementService.isRelatedToAnnouncement(
+        announcement_id,
+        user.id,
+      );
+
+    if (!checkInClassroom || !checkIsRelated)
+      throw new ForbiddenException("You're not allowed to view this");
+
+    if (!description) throw new BadRequestException('Description is required');
+
+    return await this.announcementService.createComment(
+      announcement_id,
+      user,
+      description,
+    );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('/get-comments/:classroom_id/:announcement_id')
+  async getComments(
+    @GetUser() user: User,
+    @Param('announcement_id') announcement_id,
+    @Param('classroom_id') classroom_id,
+  ) {
+    announcement_id = parseInt(announcement_id);
+    classroom_id = parseInt(classroom_id);
+
+    const checkInClassroom = await this.announcementService.isMemberOfClassroom(
+      classroom_id,
+      user.id,
+    );
+
+    const checkIsRelated =
+      await this.announcementService.isRelatedToAnnouncement(
+        announcement_id,
+        user.id,
+      );
+
+    if (!checkInClassroom || !checkIsRelated)
+      throw new ForbiddenException("You're not allowed to view this");
+
+    return await this.announcementService.getComments(announcement_id);
   }
 }

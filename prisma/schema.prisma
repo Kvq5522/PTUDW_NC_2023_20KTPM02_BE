@@ -208,7 +208,7 @@ model AnnouncementComment {
 
   description String
 
-  slug String @unique @default("")
+  slug String @default("")
 
   announcement_id    Int
   announcement_id_fk ClassroomAnnouncement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
