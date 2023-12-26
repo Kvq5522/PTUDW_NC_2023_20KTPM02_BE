@@ -17,7 +17,12 @@ import {
 } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard';
 import { GradeService } from './grade.service';
-import { GradeCompositionDto, StudentGradeDTO, StudentIdDto } from './dto';
+import {
+  GradeCompositionDto,
+  ReassessStudentGradeDTO,
+  StudentGradeDTO,
+  StudentIdDto,
+} from './dto';
 import { CustomFilePipe } from 'src/user/pipe';
 import { GetUser } from 'src/auth/decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -330,6 +335,28 @@ export class GradeController {
       );
 
     return this.gradeService.editStudentGradeByComposition(dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/reassess-student-grade-by-composition')
+  async reassessStudentGradeByComposition(
+    @GetUser() user,
+    @Body(new ValidationPipe()) dto: ReassessStudentGradeDTO,
+  ) {
+    const { id } = user;
+    const { classroom_id } = dto;
+
+    const checkAuthorization = await this.gradeService.isTeacherAuthorization(
+      classroom_id,
+      id,
+    );
+
+    if (!checkAuthorization)
+      throw new ForbiddenException(
+        "You don't have permission to access this resource",
+      );
+
+    return this.gradeService.reassessStudentGradeByComposition(dto);
   }
 
   @HttpCode(HttpStatus.OK)

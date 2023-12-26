@@ -184,7 +184,7 @@ model ClassroomAnnouncement {
   type AnnouncementType
 
   grade_category    Int?
-  grade_category_fk GradeComposition? @relation(fields: [grade_category], references: [id])
+  grade_category_fk GradeComposition? @relation(fields: [grade_category], references: [id], onDelete: Cascade)
 
   expected_grade Float?
 

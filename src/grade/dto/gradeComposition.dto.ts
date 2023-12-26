@@ -10,6 +10,10 @@ import {
 } from 'class-validator';
 
 class GradeComposition {
+  @IsNumber()
+  @IsNotEmpty()
+  id: number;
+
   @IsString()
   name: string;
 

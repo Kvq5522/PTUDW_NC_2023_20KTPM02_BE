@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   GradeCompositionDto,
   GradeReviewDTO,
+  ReassessStudentGradeDTO,
   StudentGradeDTO,
   StudentIdDto,
 } from './dto';
@@ -64,6 +65,7 @@ export class GradeService {
           grade_percent: grade_compositions[0].grade_percent,
           classroom_id: classroom_id,
           index: grade_compositions[0].index,
+          is_finalized: false,
         },
       });
 
@@ -158,7 +160,7 @@ export class GradeService {
       }
 
       for (const comp of grade_compositions) {
-        const found = currentCompostions.find((x) => x.name === comp.name);
+        const found = currentCompostions.find((x) => x.id === comp.id);
 
         if (!found) {
           addedList.push({
@@ -186,6 +188,7 @@ export class GradeService {
 
       let updatedSuccess = [];
       for (const comp of updatedList) {
+        console.log(comp);
         const updatedComp = this.prismaService.gradeComposition.update({
           where: {
             id: comp.id,
@@ -211,11 +214,11 @@ export class GradeService {
             member_role: 1,
           },
           select: {
-            id: true,
+            member_id: true,
           },
         })
       )
-        .map((x) => x.id)
+        .map((x) => x.member_id)
         .join(',');
 
       for (const comp of updatedSuccess) {
@@ -998,6 +1001,59 @@ export class GradeService {
         metadata: {
           success: updatedSuccess.concat(addedSuccess),
         },
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
+    }
+  }
+
+  async reassessStudentGradeByComposition(dto: ReassessStudentGradeDTO) {
+    try {
+      const studentInGradeList =
+        await this.prismaService.studentGradeList.findFirst({
+          where: {
+            student_id: dto.student_id,
+            classroom_id: dto.classroom_id,
+          },
+        });
+
+      if (!studentInGradeList) throw new BadRequestException('Invalid student');
+
+      const updateStudentGrade = this.prismaService.studentGradeDetail.update({
+        where: {
+          student_id_classroom_id_grade_category: {
+            student_id: dto.student_id,
+            classroom_id: dto.classroom_id,
+            grade_category: dto.grade_category,
+          },
+        },
+        data: {
+          grade: dto.grade,
+        },
+      });
+
+      const newNotification = this.prismaService.notification.create({
+        data: {
+          classroom_id: dto.classroom_id,
+          title: `Grade ${dto.grade_category} is reassessed`,
+          type: 'GRADE_ANNOUNCEMENT',
+          to_members: dto.student_id,
+        },
+      });
+
+      const transaction = await this.prismaService.$transaction([
+        updateStudentGrade,
+        newNotification,
+      ]);
+
+      return {
+        statusCode: 200,
+        message: 'Reassess student grade by composition successfully',
+        metadata: transaction[0],
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {

@@ -93,7 +93,23 @@ export class AnnouncementService {
     try {
       const announcements = await this.prismaService.notification.findMany({
         where: {
-          OR: [{ to_members: { contains: String(user_id) } }],
+          OR: [
+            {
+              to_members: {
+                contains: `,${String(user_id)},`,
+              },
+            },
+            {
+              to_members: {
+                startsWith: `${String(user_id)},`,
+              },
+            },
+            {
+              to_members: {
+                endsWith: `,${String(user_id)}`,
+              },
+            },
+          ],
         },
         select: {
           title: true,
@@ -195,6 +211,7 @@ export class AnnouncementService {
     const announcementData = {
       ...announcement,
       current_grade: studentCurrentGrade?.grade ?? 0,
+      account_student_id: requestStudent.student_id ?? 0,
       student_id: studentCurrentGrade?.student_id ?? 0,
       student_id_fk: { email: studentCurrentGrade?.student_id_fk?.email ?? '' },
     };

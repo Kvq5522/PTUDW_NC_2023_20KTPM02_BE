@@ -59,6 +59,34 @@ export class StudentGradeDTO {
   student_grades: StudentGrade[];
 }
 
+export class ReassessStudentGradeDTO {
+  @IsNumber()
+  @IsNotEmpty()
+  classroom_id: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  grade_category: number;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  student_id: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(0)
+  @Max(10)
+  grade: number;
+}
+
 export class StudentIdDto {
   @IsNumber()
   @IsNotEmpty()
