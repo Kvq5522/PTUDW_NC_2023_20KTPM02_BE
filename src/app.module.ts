@@ -10,6 +10,7 @@ import { FirebaseService } from './firebase/firebase.service';
 import { ClassroomModule } from './classroom/classroom.module';
 import { GradeModule } from './grade/grade.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AnnouncementModule } from './announcement/announcement.module';
     ClassroomModule,
     GradeModule,
     AnnouncementModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService, FirebaseService],

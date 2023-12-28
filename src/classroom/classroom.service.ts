@@ -279,7 +279,7 @@ export class ClassroomService {
         where: {
           member_id: user_id,
           classroom_id_fk: {
-            is_archive: false,
+            is_archived: false,
           },
         },
         select: {
@@ -328,7 +328,7 @@ export class ClassroomService {
               },
               {
                 classroom_id_fk: {
-                  is_archive: false,
+                  is_archived: false,
                 },
               },
             ],
@@ -395,7 +395,7 @@ export class ClassroomService {
               },
               {
                 classroom_id_fk: {
-                  is_archive: false,
+                  is_archived: false,
                 },
               },
             ],
@@ -655,7 +655,6 @@ export class ClassroomService {
     try {
       // Check if user is existed
       const emails = addMemberDTO.members;
-      console.log(emails);
       const isExsistedUser = await this.prismaService.user.findMany({
         where: { email: { in: emails } },
         select: { id: true, email: true, first_name: true, last_name: true },

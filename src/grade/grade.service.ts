@@ -188,7 +188,6 @@ export class GradeService {
 
       let updatedSuccess = [];
       for (const comp of updatedList) {
-        console.log(comp);
         const updatedComp = this.prismaService.gradeComposition.update({
           where: {
             id: comp.id,
@@ -1021,6 +1020,18 @@ export class GradeService {
           },
         });
 
+      const student = await this.prismaService.user.findFirst({
+        where: {
+          email: dto.email,
+        },
+      });
+
+      const gradeComp = await this.prismaService.gradeComposition.findFirst({
+        where: {
+          id: dto.grade_category,
+        },
+      });
+
       if (!studentInGradeList) throw new BadRequestException('Invalid student');
 
       const updateStudentGrade = this.prismaService.studentGradeDetail.update({
@@ -1039,9 +1050,9 @@ export class GradeService {
       const newNotification = this.prismaService.notification.create({
         data: {
           classroom_id: dto.classroom_id,
-          title: `Grade ${dto.grade_category} is reassessed`,
+          title: `Your grade "${gradeComp.name}" is reassessed`,
           type: 'GRADE_ANNOUNCEMENT',
-          to_members: dto.student_id,
+          to_members: `${String(student.id)},`,
         },
       });
 

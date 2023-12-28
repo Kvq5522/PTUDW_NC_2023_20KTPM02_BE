@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   FileTypeValidator,
@@ -171,7 +172,7 @@ export class GradeController {
     const excel =
       await this.gradeService.downloadStudentGradeList(classroom_id);
 
-    if (!excel) throw new ForbiddenException('No data');
+    if (!excel) throw new BadRequestException('No data');
 
     res.setHeader(
       'Content-Type',
@@ -273,7 +274,7 @@ export class GradeController {
       composition_id,
     );
 
-    if (!excel) throw new ForbiddenException('No data');
+    if (!excel) throw new BadRequestException('No data');
 
     res.setHeader(
       'Content-Type',
@@ -416,7 +417,7 @@ export class GradeController {
     const excel =
       await this.gradeService.downloadStudentGradeBoard(classroom_id);
 
-    if (!excel) throw new ForbiddenException('No data');
+    if (!excel) throw new BadRequestException('No data');
 
     res.setHeader(
       'Content-Type',

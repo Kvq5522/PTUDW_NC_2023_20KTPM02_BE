@@ -16,6 +16,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { MailingService } from 'src/mailing/mailing.service';
 import { MailDto } from './dto';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -329,6 +330,25 @@ export class AuthService {
       if (!(error instanceof HttpException)) {
         throw new InternalServerErrorException(error);
       }
+      throw error;
+    }
+  }
+
+  async verifyAdmin(user: User) {
+    try {
+      if (user.authorization < 4)
+        throw new ForbiddenException("You're not allowed");
+
+      return {
+        message: 'Admin authorized',
+        statusCode: HttpStatus.OK,
+        metadata: {},
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
       throw error;
     }
   }

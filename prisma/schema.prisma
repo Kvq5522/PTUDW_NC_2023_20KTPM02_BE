@@ -83,7 +83,7 @@ model Classroom {
 
   name String
 
-  is_archive Boolean @default(false)
+  is_archived Boolean @default(false)
 
   owner_id Int
   owner_fk User @relation(fields: [owner_id], references: [id], onDelete: Cascade)

@@ -15,7 +15,8 @@ import {
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
 import { MailDto } from './dto/mail.dto';
-import { FacebookGuard, GoogleGuard } from './guard';
+import { FacebookGuard, GoogleGuard, JwtGuard } from './guard';
+import { GetUser } from './decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -119,5 +120,14 @@ export class AuthController {
     } catch (error) {
       return error.response;
     }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/verify-admin')
+  @UseGuards(JwtGuard)
+  async verifyAdmin(@GetUser() user) {
+    const test = await this.authService.verifyAdmin(user);
+
+    return test;
   }
 }
