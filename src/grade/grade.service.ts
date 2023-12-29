@@ -328,6 +328,10 @@ export class GradeService {
 
       //check if student name, student id, email is duplicated
       for (const student of parseData) {
+        if (!student['Student Name'] || !student['Student ID']) {
+          throw new BadRequestException(`Missing student name or student id`);
+        }
+
         if (
           (nameSet.has(student['Student Name']) &&
             nameSet.get(student['Student Name']) === student['Student ID']) ||
@@ -569,6 +573,10 @@ export class GradeService {
 
       //check if student name, student id is duplicated in data
       for (const student of parseData) {
+        if (!student['Student Name'] || !student['Student ID']) {
+          throw new BadRequestException(`Missing student name or student id`);
+        }
+
         if (
           nameSet.has(student['Student Name']) &&
           nameSet.get(student['Student Name']) === student['Student ID']
@@ -624,15 +632,20 @@ export class GradeService {
           (x) => x.student_id === student['Student ID'],
         );
 
+        if (!student['Student Name'] || !student['Student ID']) {
+          failList.push({
+            ...{ student },
+            reason: 'Student name or student id is empty',
+          });
+          continue;
+        }
+
         const parseGrade = parseFloat(student['Student Grade']);
-        if (
-          isNaN(parseGrade) ||
-          parseGrade < 0 ||
-          parseGrade > 10 ||
-          !student['Student Name'] ||
-          !student['Student ID']
-        ) {
-          failList.push(student);
+        if (isNaN(parseGrade) || parseGrade < 0 || parseGrade > 10) {
+          failList.push({
+            student_id: student['Student ID'],
+            reason: 'Student grade is invalid',
+          });
           continue;
         }
 

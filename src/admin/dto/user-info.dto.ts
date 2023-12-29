@@ -23,6 +23,10 @@ export class UserInfo {
   @IsBoolean()
   @IsNotEmpty()
   is_banned: boolean;
+
+  @IsNumber()
+  @IsNotEmpty()
+  authorization: number;
 }
 
 export class UserInfoDto {
@@ -31,4 +35,22 @@ export class UserInfoDto {
   @ValidateNested({ each: true })
   @Type(() => UserInfo)
   users: UserInfo[];
+}
+
+export class AdminInfo {
+  @IsNumber()
+  @IsNotEmpty()
+  id: number;
+
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class AdminInfoDto {
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => AdminInfo)
+  admins: AdminInfo[];
 }

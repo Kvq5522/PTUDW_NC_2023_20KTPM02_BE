@@ -18,7 +18,7 @@ import {
 import { JwtGuard } from 'src/auth/guard';
 import { AdminService } from './admin.service';
 import { GetUser } from 'src/auth/decorator';
-import { ClassroomInfoDto, UserInfoDto } from './dto';
+import { AdminInfoDto, ClassroomInfoDto, UserInfoDto } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CustomFilePipe } from 'src/user/pipe';
 
@@ -135,6 +135,19 @@ export class AdminController {
         throw new ForbiddenException("You're not allowed");
 
       return await this.adminService.updateClassroomInfo(dto);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/add-admin')
+  async addAdmin(@GetUser() user, @Body() dto: AdminInfoDto) {
+    try {
+      if (user.authorization < 4)
+        throw new ForbiddenException("You're not allowed");
+
+      return await this.adminService.addAdmin(dto);
     } catch (error) {
       throw error;
     }

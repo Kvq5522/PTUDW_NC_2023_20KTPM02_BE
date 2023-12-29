@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ExcelService } from 'src/excel/excel.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ClassroomInfoDto, UserInfoDto } from './dto';
+import { AdminInfoDto, ClassroomInfoDto, UserInfoDto } from './dto';
 
 @Injectable()
 export class AdminService {
@@ -90,7 +90,12 @@ export class AdminService {
         );
 
         //Check if student id existed but not mapped by teacher
-        if (checkExistedStudentId && !checkExistedInGradeList) {
+        if (
+          checkExistedStudentId &&
+          !checkExistedInGradeList &&
+          user.student_id !==
+            usersToUpdate.find((u) => u.id === user.id).student_id
+        ) {
           failedList.push({
             email: user.email,
             reason: 'Student ID existed',
@@ -101,7 +106,13 @@ export class AdminService {
 
         //Check if student id is mapped by teacher
         // if yes, delete old reserved student id and create new one
-        if (!checkExistedInGradeList) {
+        if (
+          !checkExistedInGradeList &&
+          user.student_id !== undefined &&
+          user.student_id !== '' &&
+          user.student_id !==
+            usersToUpdate.find((u) => u.id === user.id).student_id
+        ) {
           const newReservedStudentId =
             this.prismaService.reservedStudentId.create({
               data: {
@@ -127,14 +138,31 @@ export class AdminService {
           }
         }
 
+        const objKeys = ['student_id', 'is_banned', 'authorization'];
+        let dataToUpdate = {};
+        for (const key of objKeys) {
+          if (key === 'student_id' && user[key] === '') continue;
+
+          if (
+            key === 'student_id' &&
+            user[key] === usersToUpdate.find((u) => u.id === user.id).student_id
+          ) {
+            continue;
+          }
+
+          if (user[key]) {
+            dataToUpdate = {
+              ...dataToUpdate,
+              [key]: user[key],
+            };
+          }
+        }
+
         const updatedUser = this.prismaService.user.update({
           where: {
             id: user.id,
           },
-          data: {
-            student_id: user.student_id,
-            is_banned: user.is_banned,
-          },
+          data: dataToUpdate,
           select: {
             id: true,
             email: true,
@@ -236,8 +264,6 @@ export class AdminService {
           if (student['Student ID']) return student['Student ID'];
         })
         .filter((studentId) => studentId !== undefined);
-
-      console.log(uploadedStudentIds);
 
       const existedStudentIds = await this.prismaService.user.findMany({
         where: {
@@ -449,6 +475,71 @@ export class AdminService {
         statusCode: 200,
         message: 'Edit classroom info successfully',
         metadata: updatedSuccess,
+      };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        throw new InternalServerErrorException(error);
+      }
+
+      throw error;
+    }
+  }
+
+  async addAdmin(dto: AdminInfoDto) {
+    try {
+      const { admins } = dto;
+
+      const userIds = admins.map((admin) => admin.id);
+
+      const users = await this.prismaService.user.findMany({
+        where: {
+          id: {
+            in: userIds,
+          },
+        },
+      });
+
+      const failedList = [];
+      const updatedList = [];
+
+      for (const admin of admins) {
+        const user = users.find((u) => u.id === admin.id);
+
+        if (!user) {
+          failedList.push({
+            id: admin.email,
+            reason: 'User not found',
+          });
+
+          continue;
+        }
+
+        const updatedUser = this.prismaService.user.update({
+          where: {
+            id: admin.id,
+          },
+          data: {
+            authorization: 4,
+          },
+          select: {
+            id: true,
+            email: true,
+            authorization: true,
+          },
+        });
+
+        updatedList.push(updatedUser);
+      }
+
+      const updatedSuccess = await this.prismaService.$transaction(updatedList);
+
+      return {
+        statusCode: 200,
+        message: 'Add admin successfully',
+        metadata: {
+          success: updatedSuccess,
+          failed: failedList,
+        },
       };
     } catch (error) {
       if (!(error instanceof HttpException)) {

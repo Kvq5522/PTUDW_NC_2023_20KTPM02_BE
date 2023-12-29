@@ -154,6 +154,11 @@ export class ClassroomService {
               {
                 member_id: user_id,
               },
+              {
+                classroom_id_fk: {
+                  is_archived: false,
+                },
+              },
             ],
           },
           select: {
@@ -174,8 +179,8 @@ export class ClassroomService {
       if (!checkIfUserInClassroom)
         throw new ForbiddenException("You're not in this classroom");
 
-      const classroomMember = await this.prismaService.classroomMember.findMany(
-        {
+      const classroomMembers =
+        await this.prismaService.classroomMember.findMany({
           where: {
             classroom_id: classroom_id,
           },
@@ -191,8 +196,7 @@ export class ClassroomService {
               },
             },
           },
-        },
-      );
+        });
 
       const classroomInvitation =
         await this.prismaService.classroomInvitation.findFirst({
@@ -213,7 +217,7 @@ export class ClassroomService {
         metadata: {
           user: checkIfUserInClassroom,
           invitations: classroomInvitation,
-          members: classroomMember,
+          members: classroomMembers,
         },
       };
     } catch (error) {
@@ -236,6 +240,11 @@ export class ClassroomService {
               },
               {
                 member_id: user_id,
+              },
+              {
+                classroom_id_fk: {
+                  is_archived: false,
+                },
               },
             ],
           },
@@ -679,8 +688,8 @@ export class ClassroomService {
             return null;
           } else {
             return {
-              member_email: member,
-              error: 'User does not exist',
+              email: member,
+              reason: 'User does not exist',
             };
           }
         })
@@ -712,10 +721,10 @@ export class ClassroomService {
 
         if (existedMember) {
           illegalMember.push({
-            member_email: isExsistedUser.find(
+            email: isExsistedUser.find(
               (user) => user.id === existedMember.member_id,
             ).email,
-            error: 'User already in this classroom',
+            reason: 'User already in this classroom',
           });
 
           legalMember.splice(i, 1);
@@ -769,8 +778,8 @@ export class ClassroomService {
         statusCode: HttpStatus.CREATED,
         message: 'Add member successfully',
         metadata: {
-          addedMember: legalMember,
-          illegalMember,
+          success: legalMember,
+          failed: illegalMember,
         },
       };
     } catch (error) {
@@ -859,8 +868,8 @@ export class ClassroomService {
         statusCode: HttpStatus.OK,
         message: 'Delete member successfully',
         metadata: {
-          deletedMember: legalMember,
-          illegalMember,
+          success: legalMember,
+          failed: illegalMember,
         },
       };
     } catch (error) {
