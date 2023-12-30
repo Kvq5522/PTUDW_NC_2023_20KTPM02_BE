@@ -293,6 +293,7 @@ export class ClassroomService {
         },
         select: {
           classroom_id: true,
+          member_role: true,
           classroom_id_fk: {
             select: {
               name: true,

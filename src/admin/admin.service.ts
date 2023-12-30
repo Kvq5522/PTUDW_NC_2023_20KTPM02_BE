@@ -289,10 +289,10 @@ export class AdminService {
 
       for (const user of parseData) {
         //Check if student id is truthy
-        if (user['Student ID'] && !user['Student ID'].trim()) {
+        if (user['Email'] === undefined) {
           failedList.push({
             email: user['Email'],
-            reason: 'Student ID must not be empty',
+            reason: 'Email is blank',
           });
           continue;
         }
@@ -324,8 +324,14 @@ export class AdminService {
             u.student_id === user['Student ID'] && u.email === user['Email'],
         );
 
+        const currentStudent = users.find((u) => u.email === user['Email']);
+
         //Check if student id existed but not mapped by teacher
-        if (checkExistedStudentId && !checkExistedInGradeList) {
+        if (
+          checkExistedStudentId &&
+          !checkExistedInGradeList &&
+          user['Student ID'] !== currentStudent.student_id
+        ) {
           failedList.push({
             email: user['Email'],
             reason: 'Student ID existed',
@@ -336,7 +342,11 @@ export class AdminService {
 
         //Check if student id is mapped by teacher
         // if yes, delete old reserved student id and create new one
-        if (!checkExistedInGradeList && user['Student ID']) {
+        if (
+          !checkExistedInGradeList &&
+          user['Student ID'] !== undefined &&
+          user['Student ID'] !== currentStudent.student_id
+        ) {
           const newReservedStudentId =
             this.prismaService.reservedStudentId.create({
               data: {

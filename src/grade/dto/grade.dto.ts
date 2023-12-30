@@ -82,8 +82,8 @@ export class ReassessStudentGradeDTO {
 
   @IsNumber()
   @IsNotEmpty()
-  @Min(0)
-  @Max(10)
+  @Min(0.0)
+  @Max(10.0)
   grade: number;
 }
 

@@ -17,7 +17,7 @@ class GradeComposition {
   @IsString()
   name: string;
 
-  @IsInt()
+  @IsNumber()
   grade_percent: number;
 
   @IsBoolean()
