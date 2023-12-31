@@ -189,7 +189,7 @@ export class ClassroomController {
       return await this.classroomService.addMember(
         addMemberDTO,
         user.id,
-        role_id,
+        addMemberDTO.role_id,
       );
     } catch (error) {
       return error.response;
