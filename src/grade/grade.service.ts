@@ -449,7 +449,7 @@ export class GradeService {
         } else if (!students.includes(student.student_id)) {
           const reserved = this.prismaService.reservedStudentId.create({
             data: {
-              student_id: student.student_id,
+              student_id: String(student.student_id),
             },
           });
 

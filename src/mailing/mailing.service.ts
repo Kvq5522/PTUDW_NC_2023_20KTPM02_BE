@@ -63,7 +63,7 @@ export class MailingService {
         subject: 'Invitation to join the classroom',
         template: 'inviteToClass',
         context: {
-          link: `${process.env.FE_ENDPOINT}/classroom/invite?uri=${uri}&email=${user.email}`,
+          link: `${process.env.FE_ENDPOINT}/classroom/invite?uri=${uri}`,
           user: `${user.first_name} ${user.last_name}`,
           classname: classname,
           owner: `${owner.first_name} ${owner.last_name}`,

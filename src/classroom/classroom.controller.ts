@@ -157,9 +157,6 @@ export class ClassroomController {
     try {
       const user = req.user as User;
 
-      if (user.email != body.email)
-        throw new BadRequestException("Email doesn't match");
-
       if (!body.invite_uri) throw new BadRequestException('Missing invite uri');
 
       return await this.classroomService.joinClassroomByInviteUri(

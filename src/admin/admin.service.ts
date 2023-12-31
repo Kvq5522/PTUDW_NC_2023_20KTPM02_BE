@@ -150,7 +150,7 @@ export class AdminService {
             continue;
           }
 
-          if (user[key]) {
+          if (user.hasOwnProperty(key)) {
             dataToUpdate = {
               ...dataToUpdate,
               [key]: user[key],

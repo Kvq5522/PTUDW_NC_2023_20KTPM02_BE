@@ -315,6 +315,8 @@ export class AuthService {
       if (decode.email !== user.email)
         throw new ForbiddenException('Token is invalid');
 
+      if (user.is_banned) throw new ForbiddenException('User is banned');
+
       //check expiration
       const expiration = new Date(decode.exp * 1000);
 

@@ -31,7 +31,6 @@ export class UserController {
   @HttpCode(200)
   @Get('/get-info')
   getUser(@GetUser() user: User) {
-    console.log(user);
     delete user.password;
 
     return {

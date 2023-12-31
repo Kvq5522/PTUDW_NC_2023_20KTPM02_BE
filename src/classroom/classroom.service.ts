@@ -574,6 +574,23 @@ export class ClassroomService {
                 ? roles.STUDENT
                 : roles.TEACHER,
           },
+          select: {
+            classroom_id: true,
+            classroom_id_fk: {
+              select: {
+                name: true,
+                owner_id: true,
+                owner_fk: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                    email: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
+          },
         });
 
       if (!newClassroomMember)
