@@ -678,7 +678,11 @@ export class ClassroomService {
     }
   }
 
-  async addMember(addMemberDTO: AddMemberDto, user_id: number) {
+  async addMember(
+    addMemberDTO: AddMemberDto,
+    user_id: number,
+    role_id: number,
+  ) {
     try {
       // Check if user is existed
       const emails = addMemberDTO.members;
@@ -788,7 +792,9 @@ export class ClassroomService {
             first_name: classroomInvitation.classroom_fk.owner_fk.first_name,
             last_name: classroomInvitation.classroom_fk.owner_fk.last_name,
           },
-          classroomInvitation.student_invite_uri_code,
+          role_id === 2
+            ? classroomInvitation.teacher_invite_uri_code
+            : classroomInvitation.student_invite_uri_code,
         );
       }
 

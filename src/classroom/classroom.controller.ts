@@ -186,7 +186,11 @@ export class ClassroomController {
       if (!addMemberDTO.role_id)
         throw new BadRequestException('Missing role id');
 
-      return await this.classroomService.addMember(addMemberDTO, user.id);
+      return await this.classroomService.addMember(
+        addMemberDTO,
+        user.id,
+        role_id,
+      );
     } catch (error) {
       return error.response;
     }
