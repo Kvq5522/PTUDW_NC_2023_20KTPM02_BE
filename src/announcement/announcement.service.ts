@@ -19,7 +19,17 @@ export class AnnouncementService {
             OR: [
               {
                 to_members: {
-                  contains: String(user_id),
+                  startsWith: `${String(user_id)},`,
+                },
+              },
+              {
+                to_members: {
+                  endsWith: `,${String(user_id)}`,
+                },
+              },
+              {
+                to_members: {
+                  equals: String(user_id),
                 },
               },
               {
@@ -96,17 +106,17 @@ export class AnnouncementService {
           OR: [
             {
               to_members: {
-                contains: `,${String(user_id)},`,
-              },
-            },
-            {
-              to_members: {
                 startsWith: `${String(user_id)},`,
               },
             },
             {
               to_members: {
                 endsWith: `,${String(user_id)}`,
+              },
+            },
+            {
+              to_members: {
+                equals: String(user_id),
               },
             },
           ],

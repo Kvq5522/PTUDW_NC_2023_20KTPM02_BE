@@ -35,7 +35,7 @@ model User {
   address      String? @db.VarChar(255)
   age          Int?
   gender       String?
-  avatar       String? @default("https://firebasestorage.googleapis.com/v0/b/ptudwnc2-20ktpm02-2023.appspot.com/o/images%2Favatar%2Fuser-default-avatar.png?alt=media&token=175255db-bb03-476a-841d-0e438ccd0125")
+  avatar       String? @default("")
 
   recovery_tokens       RecoveryToken[]
   classroom_members     ClassroomMember[]
