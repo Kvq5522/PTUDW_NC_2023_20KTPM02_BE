@@ -556,9 +556,12 @@ export class ClassroomService {
         throw new ForbiddenException('Invite uri not found');
 
       if (
-        classroomInvitation.student_invite_code.localeCompare(invite_uri) !==
-          0 &&
-        classroomInvitation.teacher_invite_code.localeCompare(invite_uri) !== 0
+        !(
+          classroomInvitation.student_invite_code.localeCompare(invite_uri) !==
+            0 &&
+          classroomInvitation.teacher_invite_code.localeCompare(invite_uri) !==
+            0
+        )
       ) {
         throw new ForbiddenException('Invite uri is invalid');
       }
