@@ -159,12 +159,14 @@ export class UserService {
 
       delete updatedUser.password;
 
+      const isUpdateStudentId = dto.student_id != '' ? updateStudentId : true;
+
       return {
         statusCode: HttpStatus.OK,
         message: 'Update user successfully',
         metadata: {
           userProfile: updatedUser,
-          isUpdateStudentId: updateStudentId,
+          isUpdateStudentId: isUpdateStudentId,
         },
       };
     } catch (error) {
