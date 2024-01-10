@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -249,12 +250,25 @@ export class AnnouncementService {
       },
     });
 
+    const checkIfUserInClassroom =
+      await this.prismaService.classroomMember.findFirst({
+        where: {
+          classroom_id: classroom_id,
+          member_id: announcementData.created_by,
+        },
+      });
+
+    if (!checkIfUserInClassroom) {
+      throw new ForbiddenException('You are not in this classroom');
+    }
+
     return {
       statusCode: 200,
       message: 'OK',
       metadata: {
         detail: announcementData,
         comments: comments,
+        role: checkIfUserInClassroom.member_role,
       },
     };
   }
