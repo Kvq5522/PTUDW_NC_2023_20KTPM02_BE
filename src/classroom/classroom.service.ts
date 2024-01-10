@@ -460,7 +460,15 @@ export class ClassroomService {
         });
 
       if (!classroomInvitation)
+        throw new ForbiddenException('Invite code not found');
+
+      if (
+        classroomInvitation.student_invite_code.localeCompare(invite_code) !==
+          0 &&
+        classroomInvitation.teacher_invite_code.localeCompare(invite_code) !== 0
+      ) {
         throw new ForbiddenException('Invite code is invalid');
+      }
 
       const checkExistedMember =
         await this.prismaService.classroomMember.findFirst({
@@ -545,7 +553,15 @@ export class ClassroomService {
         });
 
       if (!classroomInvitation)
+        throw new ForbiddenException('Invite uri not found');
+
+      if (
+        classroomInvitation.student_invite_code.localeCompare(invite_uri) !==
+          0 &&
+        classroomInvitation.teacher_invite_code.localeCompare(invite_uri) !== 0
+      ) {
         throw new ForbiddenException('Invite uri is invalid');
+      }
 
       const checkExistedMember =
         await this.prismaService.classroomMember.findFirst({

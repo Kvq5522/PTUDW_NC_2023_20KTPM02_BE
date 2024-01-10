@@ -238,11 +238,17 @@ export class AuthService {
     try {
       const recoveryToken = await this.prisma.recoveryToken.findFirst({
         where: {
-          token: dto.token,
+          token: {
+            equals: dto.token,
+          },
         },
       });
 
       if (!recoveryToken) throw new NotFoundException('Token not found');
+
+      if (dto.token.localeCompare(recoveryToken.token) !== 0) {
+        throw new ForbiddenException('Token is invalid');
+      }
 
       if (recoveryToken.expires_at < new Date(Date.now()))
         throw new ForbiddenException('Token expired');
