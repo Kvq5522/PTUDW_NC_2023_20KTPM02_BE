@@ -41,17 +41,6 @@ export class UserService {
           'image',
         );
 
-        const oldImagePath = decodeURIComponent(
-          checkUser.avatar.split('/o/')[1],
-        ).split('?')[0];
-
-        if (
-          oldImagePath !== 'images/avatar/user-default-avatar.png' ||
-          !oldImagePath.includes('firebasestorage.googleapis.com')
-        ) {
-          await this.firebaseService.deleteFile(checkUser.avatar);
-        }
-
         if (!downloadURL) {
           return new BadRequestException('Upload image failed');
         }
@@ -155,6 +144,13 @@ export class UserService {
             },
           });
         }
+      }
+
+      //delete old avatar after update new avatar
+      const oldImagePath = checkUser.avatar;
+
+      if (updatedUser.avatar != oldImagePath) {
+        await this.firebaseService.deleteFile(checkUser.avatar);
       }
 
       delete updatedUser.password;
